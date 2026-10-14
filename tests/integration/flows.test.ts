@@ -579,3 +579,37 @@ describe("ACT-02 : actualité enrichie", () => {
     await transitionContent(db, reviewer, "question", linkedQ.id, "published");
   });
 });
+
+describe("RES-02 : projection pondérée et bilan", () => {
+  it("aucune projection sans coefficients vérifiés ; ensuite composantes disponibles et manquantes ; rang masqué pour un petit groupe", async () => {
+    const { getProjection, cohortPercentile, weeklyText } = await import("@/server/projection");
+    const a = await newStudent("res02@test.fr");
+    const none = await getProjection(db, a);
+    expect(none.available).toBe(false);
+    expect(none.reason).toMatch(/pas publiés/);
+
+    const r1 = await staff("relecteur@demo.cap-sesame.fr");
+    const r2 = await staff("relecteur2@demo.cap-sesame.fr");
+    const admin = await staff("admin@demo.cap-sesame.fr");
+    const draft = await createDraft(db, admin, "2027", { ...SESSION_2027, coefficients: { "Programme démo": { MATH: 3, FR: 2, DOSSIER: 2, ORAL: 3 } } }, "2026-10-14");
+    await approveConfig(db, r1, draft.id);
+    await approveConfig(db, r2, draft.id);
+
+    const exam = await createExam(db, a, { subject: "MATH", mode: "strict" });
+    await answerAll(a, exam.id, true);
+    await finalizeAttempt(db, a, exam.id);
+    const p = await getProjection(db, a, "Programme démo");
+    expect(p.available).toBe(true);
+    if (!p.available) return;
+    expect(p.partial).toBe(20);
+    expect(p.coverage).toBeCloseTo(3 / 10);
+    expect(p.missing).toEqual(expect.arrayContaining(["Français", "Dossier", "Oral"]));
+
+    const rank = await cohortPercentile(db, a);
+    expect(rank.shown).toBe(false);
+    expect(rank.reason).toMatch(/concours blanc complet|trop petit/);
+
+    const text = weeklyText({ progressing: [], blocking: ["Pourcentages : notion fragile"], next: [], answeredThisWeek: 4 });
+    expect(text).toMatch(/## Ce qui progresse[\s\S]*## Ce qui bloque[\s\S]*Pourcentages[\s\S]*## Ce qu'il faut faire ensuite/);
+  });
+});

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { cohortPercentile, getProjection, weeklyText } from "@/server/projection";
+import { ShareText } from "@/components/ShareText";
 import { getDb } from "@/db";
 import { getProgress, KIND_LABELS } from "@/server/progress";
 import { requireStudent } from "@/server/next";
@@ -10,9 +12,12 @@ export const dynamic = "force-dynamic";
 
 const ORDER = ["exam_strict", "exam_pedagogic", "practice", "review", "diagnostic"];
 
-export default async function Page() {
+export default async function Page({ searchParams }: { searchParams: Promise<{ programme?: string }> }) {
+  const { programme } = await searchParams;
   const actor = await requireStudent();
-  const { series, bySubject, weekly } = await getProgress(getDb(), actor);
+  const db = getDb();
+  const { series, bySubject, weekly } = await getProgress(db, actor);
+  const [proj, rank] = await Promise.all([getProjection(db, actor, programme), cohortPercentile(db, actor)]);
   const kinds = ORDER.filter((k) => series[k]?.length);
   return (
     <div className="container stack" style={{ maxWidth: 960 }}>
@@ -35,7 +40,48 @@ export default async function Page() {
             {weekly.next.length ? <ul>{weekly.next.map((p, i) => <li key={i}>{p}</li>)}</ul> : <p className="muted small">Ton plan est à jour.</p>}
           </div>
         </div>
-        <p className="small"><a href="/api/export?format=csv">Exporter mes résultats (CSV)</a></p>
+        <p className="row small">
+          <a href="/api/bilan">Télécharger ce bilan</a>
+          <ShareText text={weeklyText(weekly)} title="Mon bilan CAP SESAME" label="Partager ce bilan" />
+          <a href="/api/export?format=csv">Exporter mes résultats (CSV)</a>
+        </p>
+      </section>
+
+      <section className="card stack" aria-labelledby="proj-title">
+        <h2 id="proj-title">Projection par programme</h2>
+        <p className="small muted">Ni note officielle ni probabilité d&apos;admission. Session {proj.sessionCode}, configuration version {proj.configVersion} vérifiée le {proj.verifiedAt}.</p>
+        {proj.programs.length > 1 && (
+          <nav className="row" aria-label="Programme">
+            {proj.programs.map((p) => <Link key={p} className={`btn small ${p === proj.program ? "primary" : ""}`} href={`/progres?programme=${encodeURIComponent(p)}`}>{p}</Link>)}
+          </nav>
+        )}
+        {!proj.available ? (
+          <p className="notice">{proj.reason}</p>
+        ) : (
+          <p>
+            {proj.partial !== null ? <><strong>{String(proj.partial).replace(".", ",")} / 20</strong> sur les composantes disponibles ({Math.round(proj.coverage * 100)} % du poids total).</> : "Aucune composante encore mesurée."}
+            {proj.missing.length > 0 && <> Manquent : {proj.missing.join(", ")}.</>}
+          </p>
+        )}
+        <div className="table-wrap">
+          <table className="data">
+            <thead><tr><th>Composante</th><th>Coefficient</th><th>Dernier concours blanc strict</th></tr></thead>
+            <tbody>
+              {proj.components.map((c) => (
+                <tr key={c.key}>
+                  <td>{c.label}</td>
+                  <td>{c.weight ?? "non publié"}</td>
+                  <td>{c.score20 !== null ? `${String(c.score20).replace(".", ",")} / 20 (${c.date})` : c.key === "DOSSIER" || c.key === "ORAL" ? "non mesuré par CAP SESAME" : "pas encore"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="small">
+          {rank.shown
+            ? <>Sur ton dernier concours blanc complet, tu fais mieux que {rank.percentile} % d&apos;un groupe de {rank.n} élèves ({rank.period}). {rank.bias}</>
+            : <span className="muted">{rank.reason}</span>}
+        </p>
       </section>
 
       <section className="stack">
