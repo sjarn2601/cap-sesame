@@ -23,6 +23,13 @@ export default async function Page({ params }: { params: Promise<{ skillId: stri
       <section className="card">
         <p><span className="badge accent">{MASTERY_LABELS[d.mastery.status]}</span></p>
         <p>{d.mastery.explanation}</p>
+        {d.estimate.mean !== null && (
+          <details>
+            <summary className="small">Estimation expérimentale (avec marge d&apos;incertitude)</summary>
+            <p className="small">{MASTERY_LABELS[d.estimate.status]} · {d.estimate.explanation}</p>
+            <p className="small muted">Ce calcul tient compte de la difficulté des questions. Il est comparé au calcul principal avant d&apos;être utilisé ; seules tes réponses sans aide comptent.</p>
+          </details>
+        )}
         <div className="row">
           <Link className="btn small" href={`/entrainement?notion=${d.skill.id}`}>S&apos;entraîner sur cette notion</Link>
           <Link className="btn small ghost" href={`/apprendre/cours/L-${d.skill.id}`}>Revoir le cours</Link>

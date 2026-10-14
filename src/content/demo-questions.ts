@@ -320,7 +320,7 @@ export const DEMO_QUESTIONS: DemoQuestion[] = [
     ["28", false, "C'était le nombre avant le retrait du Royaume-Uni."],
     ["25", false, "C'était le nombre en 2004."],
     ["30", false, "Aucun élargissement n'a porté l'Union à 30 membres."],
-  ], "Le Royaume-Uni a quitté l'Union le 31 janvier 2020. Valeur à revérifier avant chaque session en cas d'élargissement.", "UE : 27 États membres depuis 2020.", { reserved: true, references: ["Accord de retrait UE–Royaume-Uni, 2020"] }),
+  ], "Le Royaume-Uni a quitté l'Union le 31 janvier 2020. Valeur à revérifier avant chaque session en cas d'élargissement.", "UE : 27 États membres depuis 2020.", { reserved: true, references: ["Accord de retrait UE–Royaume-Uni, 2020", "news:brexit"] }),
 
   q("ACT-ECO-001", "ACT", "act.eco", "act.eco.inflation", 1, "Que mesure l'inflation ?", [
     ["La hausse générale et durable du niveau des prix", true, "Définition standard, mesurée en France par l'Insee."],
@@ -352,7 +352,7 @@ export const DEMO_QUESTIONS: DemoQuestion[] = [
     ["Le protocole de Kyoto", false, "Adopté en 1997, il fixait des réductions d'émissions à certains pays."],
     ["Le protocole de Montréal", false, "Adopté en 1987, il porte sur la couche d'ozone."],
     ["La convention de Ramsar", false, "Adoptée en 1971, elle protège les zones humides."],
-  ], "L'accord de Paris (COP21, 12 décembre 2015) fixe l'objectif de limiter le réchauffement nettement en dessous de 2 °C et de poursuivre les efforts pour 1,5 °C.", "Accord de Paris : 2015, COP21, objectif < 2 °C.", { references: ["CCNUCC, accord de Paris (2015)"] }),
+  ], "L'accord de Paris (COP21, 12 décembre 2015) fixe l'objectif de limiter le réchauffement nettement en dessous de 2 °C et de poursuivre les efforts pour 1,5 °C.", "Accord de Paris : 2015, COP21, objectif < 2 °C.", { references: ["CCNUCC, accord de Paris (2015)", "news:accord-paris"] }),
   q("ACT-ENV-002", "ACT", "act.env", "act.env.ges", 1, "Quel gaz est le principal contributeur d'origine humaine au renforcement de l'effet de serre ?", [
     ["Le dioxyde de carbone (CO₂)", true, "Émis surtout par la combustion d'énergies fossiles."],
     ["Le dioxygène (O₂)", false, "Ce n'est pas un gaz à effet de serre."],

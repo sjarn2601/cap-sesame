@@ -1,15 +1,43 @@
 // Données de démonstration : comptes fictifs, session 2027, catalogue et banque originale.
 import "./env";
+import { randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { getDb, closeDb } from "@/db";
 import * as s from "@/db/schema";
 import { hashPassword } from "@/lib/password";
 import { qualityChecks } from "@/lib/editorial";
 import { DEMO_QUESTIONS } from "@/content/demo-questions";
-import { SUBJECTS, SKILLS, LESSONS, lessonSections, DOCUMENT_SET, NEWS, SESSION_2027 } from "@/content/demo-catalog";
+import { SUBJECTS, SKILLS, LESSONS, lessonSections, DOCUMENT_SET, NEWS, SESSION_2027, PROGRAM_SHEETS, NEWS_EXTRA, LANGUAGE_EXERCISES } from "@/content/demo-catalog";
 
-export const DEMO_TOTP_SECRET = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP";
-export const DEMO_PASSWORD = "demo-sesame-2027";
+const LOCAL_TOTP_SECRET = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP";
+const LOCAL_PASSWORD = "demo-sesame-2027";
+const isProd = process.env.NODE_ENV === "production";
+
+/** Secret TOTP aléatoire en base 32 (20 octets), pour qu'aucun code du personnel ne soit public en ligne. */
+function randomBase32() {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const bytes = randomBytes(20);
+  let bits = 0;
+  let value = 0;
+  let out = "";
+  for (const b of bytes) {
+    value = (value << 8) | b;
+    bits += 8;
+    while (bits >= 5) {
+      out += alphabet[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  return out;
+}
+
+/** En ligne, le mot de passe et le secret TOTP des comptes de démonstration ne sont jamais ceux du dépôt. */
+function demoSecrets() {
+  const password = process.env.DEMO_PASSWORD || (isProd ? null : LOCAL_PASSWORD);
+  if (!password || password.length < 12) throw new Error("DEMO_PASSWORD (12 caractères au moins) est obligatoire en production.");
+  const totpSecret = process.env.DEMO_TOTP_SECRET || (isProd ? randomBase32() : LOCAL_TOTP_SECRET);
+  return { password, totpSecret, generatedTotp: !process.env.DEMO_TOTP_SECRET && isProd };
+}
 
 export async function seed(db = getDb()) {
   const existing = await db.query.users.findFirst({ where: eq(s.users.email, "admin@demo.cap-sesame.fr") });
@@ -17,8 +45,9 @@ export async function seed(db = getDb()) {
     console.log("Base déjà initialisée : seed ignoré.");
     return;
   }
-  const pw = await hashPassword(DEMO_PASSWORD);
-  const mk = (email: string, role: (typeof s.roleEnum.enumValues)[number], displayName: string) => ({ email, passwordHash: pw, role, displayName, totpSecret: role === "student" ? null : DEMO_TOTP_SECRET });
+  const secrets = demoSecrets();
+  const pw = await hashPassword(secrets.password);
+  const mk = (email: string, role: (typeof s.roleEnum.enumValues)[number], displayName: string) => ({ email, passwordHash: pw, role, displayName, totpSecret: role === "student" ? null : secrets.totpSecret });
   const [admin, author, reviewer, reviewer2] = await db
     .insert(s.users)
     .values([
@@ -138,9 +167,11 @@ export async function seed(db = getDb()) {
   ]);
 
   for (const n of NEWS) {
-    await db.insert(s.newsItems).values({ ...n, lastVerifiedAt: "2026-10-14", ...published });
+    await db.insert(s.newsItems).values({ ...n, ...NEWS_EXTRA[n.title], lastVerifiedAt: "2026-10-14", ...published });
   }
 
+  for (const sh of PROGRAM_SHEETS) await db.insert(s.programSheets).values({ ...sh, lastVerifiedAt: "2026-10-14", ...published });
+  for (const x of LANGUAGE_EXERCISES) await db.insert(s.languageExercises).values({ ...x, ...published });
   await db.insert(s.rightsRegistry).values([
     { contentType: "question", contentRef: "Banque de démonstration (toutes les questions)", holder: "CAP SESAME", licence: "Création originale", evidence: "Rédigé pour le projet, aucune reprise de contenu tiers." },
     { contentType: "document_set", contentRef: DOCUMENT_SET.id, holder: "CAP SESAME", licence: "Création originale, données fictives", evidence: "Texte, tableau et graphique créés pour la démonstration." },
@@ -159,6 +190,9 @@ export async function seed(db = getDb()) {
   });
   await db.insert(s.consentRecords).values({ userId: student.id, purpose: "service_account_15_plus", granted: true, textVersion: "cgu-2026-10" });
 
+  if (secrets.generatedTotp) {
+    console.log(`Secret du second facteur des comptes du personnel (à ajouter dans une application d'authentification, une seule fois) : ${secrets.totpSecret}`);
+  }
   console.log(`Seed terminé : ${DEMO_QUESTIONS.length} questions publiées, ${LESSONS.length} cours, ${NEWS.length} fiches d'actualité.`);
 }
 

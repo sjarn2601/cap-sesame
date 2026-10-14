@@ -8,8 +8,11 @@ import { AppError } from "@/server/errors";
 import { ActionForm, Submit } from "@/components/ActionForm";
 import { addNoteAction, deleteNoteAction, startPracticeAction } from "@/app/actions/student";
 import { Flashcards } from "./Flashcards";
+import { speechLang } from "@/lib/speech";
 import { ReportButton } from "@/components/ReportButton";
 import { frDate } from "@/components/labels";
+import { DownloadLesson } from "@/components/OfflineButtons";
+import { AssistantPanel } from "@/components/AssistantPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +39,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       {data.updatedSinceView && (
         <p className="notice warn" role="status">Ce cours a été mis à jour depuis ta dernière lecture (version {data.updatedSinceView} → {lesson.version}).</p>
       )}
+      <DownloadLesson url={`/apprendre/cours/${lessonId}`} title={lesson.title} />
       <section className="card flat">
         <h2>Objectifs</h2>
         <ul>{lesson.objectives.map((o) => <li key={o}>{o}</li>)}</ul>
@@ -54,10 +58,11 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           )}
         </section>
       ))}
+      <AssistantPanel kind="lesson" lessonId={lessonId} sections={lesson.sections.map((s) => ({ anchor: s.anchor, title: s.title }))} />
       {lesson.flashcards.length > 0 && (
         <section className="card flat stack">
           <h2>Cartes mémoire</h2>
-          <Flashcards cards={lesson.flashcards} />
+          <Flashcards cards={lesson.flashcards} lang={speechLang(skill?.subjectCode)} />
         </section>
       )}
       <section className="card flat stack">

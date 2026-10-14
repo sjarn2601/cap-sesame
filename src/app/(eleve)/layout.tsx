@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireStudent } from "@/server/next";
 import { StudentNav } from "@/components/StudentNav";
-import { logoutAction } from "@/app/actions/auth";
+import { LogoutButton } from "@/components/LogoutButton";
 
 export default async function StudentLayout({ children }: { children: React.ReactNode }) {
   await requireStudent();
@@ -14,9 +14,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
             <span>CAP SESAME</span>
           </Link>
           <StudentNav variant="top" />
-          <form action={logoutAction}>
-            <button className="btn ghost small">Déconnexion</button>
-          </form>
+          <LogoutButton />
         </div>
       </header>
       <main id="contenu">{children}</main>

@@ -283,3 +283,354 @@ describe("R08 : export et suppression", () => {
     await expect(login(db, "throttle@test.fr", PW, "1.2.3.4")).rejects.toMatchObject({ code: "throttled" });
   });
 });
+
+describe("OFF-01 : séries hors connexion", () => {
+  it("synchronisation sans doublon, question retirée signalée, limite de séries", async () => {
+    const { createOfflinePack, syncOffline, MAX_OFFLINE_PACKS } = await import("@/server/offline");
+    const a = await newStudent("off01@test.fr");
+    const pack = await createOfflinePack(db, a, { subjectCode: "MATH", size: "short" });
+    expect(pack.questions.length).toBe(5);
+    expect(pack.questions[0].options.some((o) => o.correct) || pack.questions[0].numericAnswer !== null).toBe(true);
+
+    // Une question est retirée pendant que l'élève est hors connexion.
+    const retired = pack.questions[0];
+    await db.update(s.questionVersions).set({ status: "retired" }).where(eq(s.questionVersions.id, retired.id));
+
+    const answers = pack.questions.slice(0, 3).map((q, i) => ({
+      questionVersionId: q.id,
+      clientId: `local-${i}-${q.id}`,
+      selected: q.format === "numeric" ? [] : [q.options[0].id],
+      numericValue: q.format === "numeric" ? 1 : null,
+      durationMs: 15000,
+      answeredAt: new Date(Date.now() + i * 1000).toISOString(),
+    }));
+    const first = await syncOffline(db, a, pack.attemptId, answers, {}, false);
+    expect(first.accepted).toBe(3);
+    expect(first.withdrawn).toContain(retired.questionId);
+    // Le réseau coupe pendant l'envoi : l'appareil renvoie les mêmes réponses.
+    const replay = await syncOffline(db, a, pack.attemptId, answers, {}, false);
+    expect(replay.accepted).toBe(0);
+    expect(replay.duplicates).toBe(3);
+    const rows = await db.select().from(s.responses).where(eq(s.responses.attemptId, pack.attemptId));
+    expect(rows).toHaveLength(3);
+
+    const done = await syncOffline(db, a, pack.attemptId, [], {}, true);
+    expect(done.finalized).toBe(true);
+    await db.update(s.questionVersions).set({ status: "published" }).where(eq(s.questionVersions.id, retired.id));
+
+    for (let i = 0; i < MAX_OFFLINE_PACKS; i++) await createOfflinePack(db, a, { size: "short" });
+    await expect(createOfflinePack(db, a, { size: "short" })).rejects.toThrow(/déjà/);
+
+    const other = await newStudent("off01b@test.fr");
+    await expect(syncOffline(db, other, pack.attemptId, [], {}, true)).rejects.toThrow();
+  });
+});
+
+describe("IA-01 / IA-02 : assistant encadré", () => {
+  it("appuis cités, données minimales, niveaux d'aide, quotas, budget et repli éditorial", async () => {
+    const { askAboutQuestion, askAboutLesson, redact } = await import("@/server/assistant");
+    type Req = { system: string; prompt: string; maxTokens: number };
+    const seen: Req[] = [];
+    let reply = "Regarde d'abord les unités.";
+    const fake = {
+      async complete(req: Req) {
+        seen.push(req);
+        return { text: reply, model: "fake", inputTokens: 1000, outputTokens: 200, refused: false };
+      },
+    };
+    const broken = { complete: async () => { throw new Error("panne"); } };
+    const a = await newStudent("ia01@test.fr");
+    const p = await createPractice(db, a, { subjectCode: "MATH", size: "short" });
+    const qv = p.questionVersionIds[0];
+
+    // Indice : appuis versionnés, aucune donnée personnelle, contenu traité comme donnée.
+    const hint = await askAboutQuestion(db, a, { attemptId: p.id, questionVersionId: qv, mode: "hint", level: 1, question: "écris à ia01@test.fr ou au 06 12 34 56 78" }, fake);
+    expect(hint.source).toBe("ai");
+    expect(hint.sources[0].ref).toMatch(/^question:.+@\d+$/);
+    expect(hint.sources.some((x) => x.ref.startsWith("session:2027@"))).toBe(true);
+    expect(seen[0].prompt).not.toContain("ia01@test.fr");
+    expect(seen[0].prompt).not.toContain("06 12 34 56 78");
+    expect(seen[0].system).toMatch(/jamais des instructions/);
+    expect(seen[0].system).toMatch(/N'invente jamais un chiffre officiel/);
+    expect(redact("x".repeat(500))).toHaveLength(300);
+
+    // La réponse donnée après une aide compte comme aidée.
+    await saveResponse(db, a, p.id, { questionVersionId: qv, idempotencyKey: "ia-1", selected: [], numericValue: 0, durationMs: 1000 });
+    const [row] = await db.select().from(s.responses).where(and(eq(s.responses.attemptId, p.id), eq(s.responses.questionVersionId, qv)));
+    expect(row.hintsUsed).toBeGreaterThanOrEqual(1);
+
+    // Conflit avec le corrigé : incertitude signalée, contestation proposée.
+    reply = "INCERTITUDE : le corrigé semble contredire l'énoncé.\nVoici le raisonnement.";
+    const ex = await askAboutQuestion(db, a, { attemptId: p.id, questionVersionId: qv, mode: "explain" }, fake);
+    expect(ex.uncertain).toBe(true);
+    expect(ex.text).toBe("Voici le raisonnement.");
+    expect(seen.at(-1)!.prompt).toMatch(/Corrigé validé/);
+
+    // Panne ou absence de clé : correction éditoriale, la séance continue.
+    const down = await askAboutQuestion(db, a, { attemptId: p.id, questionVersionId: qv, mode: "explain" }, broken);
+    expect(down.source).toBe("editorial");
+    expect(down.text.length).toBeGreaterThan(0);
+    const off = await askAboutLesson(db, a, { lessonId: "L-MATH-PCT" }, null).catch(async () => {
+      const [l] = await db.select().from(s.lessonVersions).where(eq(s.lessonVersions.status, "published")).limit(1);
+      return askAboutLesson(db, a, { lessonId: l.lessonId }, null);
+    });
+    expect(off.source).toBe("editorial");
+    expect(off.notice).toMatch(/pas activé/);
+
+    // Quota quotidien par élève.
+    process.env.SESAME_AI_DAILY_REQUESTS = "4";
+    const q4 = await askAboutQuestion(db, a, { attemptId: p.id, questionVersionId: qv, mode: "explain" }, fake);
+    expect(q4.source).toBe("ai");
+    expect(q4.remaining).toBe(0);
+    const q5 = await askAboutQuestion(db, a, { attemptId: p.id, questionVersionId: qv, mode: "explain" }, fake);
+    expect(q5.source).toBe("editorial");
+    expect(q5.notice).toMatch(/toutes tes demandes/);
+    delete process.env.SESAME_AI_DAILY_REQUESTS;
+
+    // Budget global : au-delà, plus aucun appel au fournisseur.
+    process.env.SESAME_AI_DAILY_BUDGET_USD = "0.001";
+    const b = await newStudent("ia01b@test.fr");
+    const pb = await createPractice(db, b, { subjectCode: "MATH", size: "short" });
+    const calls = seen.length;
+    const over = await askAboutQuestion(db, b, { attemptId: pb.id, questionVersionId: pb.questionVersionIds[0], mode: "hint", level: 1 }, fake);
+    expect(over.source).toBe("editorial");
+    expect(seen.length).toBe(calls);
+    delete process.env.SESAME_AI_DAILY_BUDGET_USD;
+
+    // Journal : coût enregistré, sans contenu des échanges.
+    const usage = await db.select().from(s.aiUsage).where(eq(s.aiUsage.userId, a.id));
+    expect(usage.find((u) => u.outcome === "ai")!.costMicroUsd).toBe(1000 * 4 + 200 * 20);
+    expect(usage.map((u) => u.outcome)).toEqual(expect.arrayContaining(["ai", "fallback_error", "fallback_disabled", "fallback_quota"]));
+
+    // Concours blanc strict : aucune aide tant que l'épreuve dure ; ressource d'un autre élève introuvable.
+    const exam = await createExam(db, a, { subject: "MATH", mode: "strict" });
+    await expect(askAboutQuestion(db, a, { attemptId: exam.id, questionVersionId: exam.questionVersionIds[0], mode: "hint", level: 1 }, fake)).rejects.toThrow(/strict/);
+    await expect(askAboutQuestion(db, a, { attemptId: exam.id, questionVersionId: exam.questionVersionIds[0], mode: "explain" }, fake)).rejects.toThrow(/strict/);
+    await expect(askAboutQuestion(db, b, { attemptId: p.id, questionVersionId: qv, mode: "explain" }, fake)).rejects.toThrow(/introuvable/);
+  });
+});
+
+describe("ORA-01 : oraux", () => {
+  it("fiches par école, dossier sans invention, simulation, retour cité, suppression", async () => {
+    const oral = await import("@/server/oral");
+    const a = await newStudent("ora01@test.fr");
+    const sheets = await oral.listSheets(db, a);
+    expect(sheets.length).toBeGreaterThanOrEqual(2);
+    for (const sh of sheets) {
+      expect(sh.school && sh.program && sh.campus && sh.sessionCode && sh.lastVerifiedAt).toBeTruthy();
+      expect(sh.sources.length).toBeGreaterThan(0);
+    }
+
+    // Dossier : seuls les faits saisis, transmis sans e-mail.
+    await oral.saveDossierEntry(db, a, { category: "engagement", title: "Trésorier du club de basket", details: "Budget de 3 000 euros, contact ora01@test.fr" });
+    await oral.saveDossierEntry(db, a, { category: "difficulte", title: "Remontée en mathématiques", details: "De 8 à 14 en un trimestre." });
+    const seen: string[] = [];
+    const fake = (text: string) => ({ async complete(req: { prompt: string }) { seen.push(req.prompt); return { text, model: "fake", inputTokens: 500, outputTokens: 100, refused: false }; } });
+    const plan = await oral.structureDossier(db, a, fake("1. Accroche : le basket."));
+    expect(plan.source).toBe("ai");
+    expect(seen[0]).toContain("Trésorier du club de basket");
+    expect(seen[0]).not.toContain("ora01@test.fr");
+    const planOff = await oral.structureDossier(db, a, null);
+    expect(planOff.source).toBe("editorial");
+    expect(planOff.text).toContain("Trésorier du club de basket");
+
+    // Simulation sur une fiche : questions propres au programme.
+    const sim = await oral.startSimulation(db, a, { sheetId: sheets[0].id });
+    expect(sim.turns).toHaveLength(5);
+    expect(sim.turns.filter((t) => t.kind === "programme").map((t) => t.prompt)).toEqual(sheets[0].questions.slice(0, 2));
+    const answer = "D'abord, je suis trésorier du club de basket depuis 2 ans, parce que j'aime gérer un projet. Ensuite, l'international m'attire. Du coup j'ai choisi ce programme.";
+    await oral.saveTurn(db, a, sim.id, { turnId: sim.turns[0].id, answer, inputMode: "voice", edited: true });
+    await expect(oral.saveTurn(db, a, sim.id, { turnId: "00000000-0000-0000-0000-000000000000", answer: "x", inputMode: "text", edited: false })).rejects.toThrow();
+
+    // Retour sans assistant : six critères, citations tirées des réponses.
+    const fb = await oral.finishSimulation(db, a, sim.id, null);
+    expect(fb.source).toBe("editorial");
+    expect(fb.criteria.map((c) => c.key)).toEqual(["clarte", "structure", "exemples", "programme", "argumentation", "langue"]);
+    for (const c of fb.criteria) if (c.quote) expect(answer).toContain(c.quote);
+    expect(fb.criteria.find((c) => c.key === "langue")!.comment).toMatch(/du coup/);
+    expect(fb.criteria.find((c) => c.key === "programme")!.comment).toMatch(/international/);
+
+    // Retour de l'assistant : une citation inventée est écartée.
+    const aiJson = JSON.stringify({
+      criteria: ["clarte", "structure", "exemples", "programme", "argumentation", "langue"].map((key, i) => ({ key, level: 2, comment: `ok ${key}`, quote: i === 0 ? "phrase jamais dite" : i === 1 ? "je suis trésorier du club de basket" : null })),
+      summary: "Bonne base.",
+      next: ["Préparer un deuxième exemple."],
+    });
+    const fbAi = await oral.finishSimulation(db, a, sim.id, fake(aiJson));
+    expect(fbAi.source).toBe("ai");
+    expect(fbAi.criteria[0].quote).toBeNull();
+    expect(fbAi.criteria[1].quote).toBe("je suis trésorier du club de basket");
+    const broken = await oral.finishSimulation(db, a, sim.id, fake("pas du json"));
+    expect(broken.source).toBe("editorial");
+
+    // Export, isolement entre élèves, suppression.
+    const exp = await exportData(db, a);
+    expect(exp.oralDossier).toHaveLength(2);
+    expect(exp.oralSimulations).toHaveLength(1);
+    const b = await newStudent("ora01b@test.fr");
+    await expect(oral.getSimulation(db, b, sim.id)).rejects.toThrow(/introuvable/);
+    await expect(oral.deleteSimulation(db, b, sim.id)).rejects.toThrow(/introuvable/);
+    await oral.deleteSimulation(db, a, sim.id);
+    expect(await oral.listSimulations(db, a)).toHaveLength(0);
+    const entries = await oral.getDossier(db, a);
+    await oral.deleteDossierEntry(db, a, entries[0].id);
+    expect(await oral.getDossier(db, a)).toHaveLength(1);
+  });
+});
+
+describe("ADA-02 : comparaison et retour arrière", () => {
+  it("les deux estimations sont stockées ; seul un administrateur change le système, de façon journalisée", async () => {
+    const { estimationReport, setEstimationMode, getEstimationMode } = await import("@/server/estimation");
+    const a = await newStudent("ada02@test.fr");
+    const p = await createPractice(db, a, { subjectCode: "MATH", size: "short" });
+    await answerAll(a, p.id, true);
+    await finalizeAttempt(db, a, p.id);
+    const snaps = await db.select().from(s.masterySnapshots).where(eq(s.masterySnapshots.userId, a.id));
+    expect(snaps.length).toBeGreaterThan(0);
+    expect(snaps.every((x) => x.probStatus !== null)).toBe(true);
+
+    const admin = await staff("admin@demo.cap-sesame.fr");
+    const author = await staff("auteur@demo.cap-sesame.fr");
+    expect(await getEstimationMode(db)).toBe("simple");
+    await expect(setEstimationMode(db, author, "probabilistic")).rejects.toThrow();
+    await setEstimationMode(db, admin, "probabilistic");
+    expect(await getEstimationMode(db)).toBe("probabilistic");
+    const next = await createPractice(db, a, { subjectCode: "MATH", size: "short" });
+    expect(next.questionVersionIds.length).toBe(5);
+    await setEstimationMode(db, admin, "simple");
+    const report = await estimationReport(db, admin);
+    expect(report.mode).toBe("simple");
+    expect(report.snapshots).toBeGreaterThan(0);
+    const logs = await db.select().from(s.auditEvents).where(eq(s.auditEvents.action, "settings.estimation_mode"));
+    expect(logs).toHaveLength(2);
+  });
+});
+
+describe("REV-02 : cartes personnelles et fiches", () => {
+  it("révision espacée des cartes, export regroupé par type d'erreur, isolement", async () => {
+    const cards = await import("@/server/cards");
+    const a = await newStudent("rev02@test.fr");
+    const c = await cards.createCard(db, a, { front: "to rely on", back: "compter sur", subjectCode: "EN" });
+    await expect(cards.createCard(db, a, { front: " ", back: "x" })).rejects.toThrow();
+    expect((await cards.listCards(db, a)).due).toHaveLength(1);
+    const now = new Date("2026-10-14T08:00:00Z");
+    const r1 = await cards.reviewCard(db, a, c.id, true, now);
+    expect(r1.dueAt.toISOString().slice(0, 10)).toBe("2026-10-15");
+    const r2 = await cards.reviewCard(db, a, c.id, true, now);
+    expect(r2.dueAt.toISOString().slice(0, 10)).toBe("2026-10-17");
+    const r3 = await cards.reviewCard(db, a, c.id, false, now);
+    expect(r3.stage).toBe(0);
+
+    const p = await createPractice(db, a, { subjectCode: "MATH", size: "short" });
+    await answerAll(a, p.id, false);
+    await finalizeAttempt(db, a, p.id);
+    const md = await cards.exportSheets(db, a, "md");
+    expect(md).toMatch(/^# Mes fiches de révision/);
+    expect(md).toMatch(/## (Connaissance|Lecture|Gestion du temps|Cause à préciser)/);
+    expect(md).toContain("**to rely on** : compter sur");
+    const csv = await cards.exportSheets(db, a, "csv");
+    expect(csv.split("\n")[0]).toBe("type;groupe;notion;recto_ou_regle;verso;statut");
+
+    const b = await newStudent("rev02b@test.fr");
+    await expect(cards.reviewCard(db, b, c.id, true)).rejects.toThrow(/introuvable/);
+    await expect(cards.deleteCard(db, b, c.id)).rejects.toThrow(/introuvable/);
+    expect((await exportData(db, a)).personalCards).toHaveLength(1);
+  });
+});
+
+describe("ACT-02 : actualité enrichie", () => {
+  it("correction factuelle : questions liées suspendues, ancienne version retirée à la publication, quiz sans l'information corrigée", async () => {
+    const { correctNewsFact, createWeeklyQuiz } = await import("@/server/news");
+    const { transitionContent } = await import("@/server/editorialAdmin");
+    const author = await staff("auteur@demo.cap-sesame.fr");
+    const reviewer = await staff("relecteur@demo.cap-sesame.fr");
+    const [paris] = await db.select().from(s.newsItems).where(and(eq(s.newsItems.slug, "accord-paris"), eq(s.newsItems.status, "published")));
+    expect(paris.sources.length).toBeGreaterThan(0);
+    expect(paris.viewpoints.length).toBeGreaterThan(0);
+
+    const a = await newStudent("act02@test.fr");
+    const before = await createWeeklyQuiz(db, a);
+    const linkedQ = (await db.select().from(s.questionVersions).where(sql`${s.questionVersions.references} @> '["news:accord-paris"]'::jsonb`))[0];
+    expect(before.questionVersionIds).toContain(linkedQ.id);
+    expect((before.meta as { reasons: Record<string, string> }).reasons[linkedQ.id]).toMatch(/accord de Paris/);
+
+    await expect(correctNewsFact(db, author, paris.id, { summary: "x" }, "")).rejects.toThrow(/source/);
+    const r = await correctNewsFact(db, author, paris.id, { summary: "Résumé corrigé." }, "Précision de la date d'entrée en vigueur (CCNUCC)");
+    expect(r.suspendedQuestions.map((q) => q.id)).toContain(linkedQ.id);
+    const q = await db.query.questionVersions.findFirst({ where: eq(s.questionVersions.id, linkedQ.id) });
+    expect(q!.status).toBe("suspended");
+    const old = await db.query.newsItems.findFirst({ where: eq(s.newsItems.id, paris.id) });
+    expect(old!.status).toBe("suspended");
+    expect(r.draft.version).toBe(paris.version + 1);
+
+    // La question suspendue ne revient pas dans une nouvelle série.
+    const after = await createWeeklyQuiz(db, a);
+    expect(after.questionVersionIds).not.toContain(linkedQ.id);
+
+    // Relecture par une autre personne puis publication : l'ancienne version est retirée.
+    await transitionContent(db, author, "news", r.draft.id, "in_review");
+    await transitionContent(db, reviewer, "news", r.draft.id, "format_check");
+    await transitionContent(db, reviewer, "news", r.draft.id, "validated");
+    await transitionContent(db, reviewer, "news", r.draft.id, "published");
+    const old2 = await db.query.newsItems.findFirst({ where: eq(s.newsItems.id, paris.id) });
+    expect(old2!.status).toBe("retired");
+    // La question reste suspendue tant qu'un relecteur ne l'a pas revue.
+    expect((await db.query.questionVersions.findFirst({ where: eq(s.questionVersions.id, linkedQ.id) }))!.status).toBe("suspended");
+    await transitionContent(db, reviewer, "question", linkedQ.id, "published");
+  });
+});
+
+describe("RES-02 : projection pondérée et bilan", () => {
+  it("aucune projection sans coefficients vérifiés ; ensuite composantes disponibles et manquantes ; rang masqué pour un petit groupe", async () => {
+    const { getProjection, cohortPercentile, weeklyText } = await import("@/server/projection");
+    const a = await newStudent("res02@test.fr");
+    const none = await getProjection(db, a);
+    expect(none.available).toBe(false);
+    expect(none.reason).toMatch(/pas publiés/);
+
+    const r1 = await staff("relecteur@demo.cap-sesame.fr");
+    const r2 = await staff("relecteur2@demo.cap-sesame.fr");
+    const admin = await staff("admin@demo.cap-sesame.fr");
+    const draft = await createDraft(db, admin, "2027", { ...SESSION_2027, coefficients: { "Programme démo": { MATH: 3, FR: 2, DOSSIER: 2, ORAL: 3 } } }, "2026-10-14");
+    await approveConfig(db, r1, draft.id);
+    await approveConfig(db, r2, draft.id);
+
+    const exam = await createExam(db, a, { subject: "MATH", mode: "strict" });
+    await answerAll(a, exam.id, true);
+    await finalizeAttempt(db, a, exam.id);
+    const p = await getProjection(db, a, "Programme démo");
+    expect(p.available).toBe(true);
+    if (!p.available) return;
+    expect(p.partial).toBe(20);
+    expect(p.coverage).toBeCloseTo(3 / 10);
+    expect(p.missing).toEqual(expect.arrayContaining(["Français", "Dossier", "Oral"]));
+
+    const rank = await cohortPercentile(db, a);
+    expect(rank.shown).toBe(false);
+    expect(rank.reason).toMatch(/concours blanc complet|trop petit/);
+
+    const text = weeklyText({ progressing: [], blocking: ["Pourcentages : notion fragile"], next: [], answeredThisWeek: 4 });
+    expect(text).toMatch(/## Ce qui progresse[\s\S]*## Ce qui bloque[\s\S]*Pourcentages[\s\S]*## Ce qu'il faut faire ensuite/);
+  });
+});
+
+describe("LAN-02 : langues à l'oral", () => {
+  it("exercices des seules langues de l'élève ; ouverture refusée sans parcours de base complet", async () => {
+    const { listLanguageExercises, setLanguageOpen, languageReadiness } = await import("@/server/languages");
+    const a = await newStudent("lan02@test.fr");
+    const langs = await listLanguageExercises(db, a);
+    expect(langs.map((l) => l.code)).toEqual(["EN", "LV-ES"]);
+    const en = langs.find((l) => l.code === "EN")!;
+    expect(new Set(en.exercises.map((x) => x.kind))).toEqual(new Set(["listening", "read_aloud", "conversation"]));
+    expect(en.exercises.find((x) => x.kind === "listening")!.transcriptByDefault).toBe(false);
+
+    const admin = await staff("admin@demo.cap-sesame.fr");
+    const ready = await languageReadiness(db, admin);
+    const ar = ready.find((l) => l.code === "LV-AR")!;
+    expect(ar.dir).toBe("rtl");
+    expect(ar.ready).toBe(false);
+    await expect(setLanguageOpen(db, admin, "LV-AR", true)).rejects.toThrow(/Parcours de base incomplet/);
+    const author = await staff("auteur@demo.cap-sesame.fr");
+    await expect(setLanguageOpen(db, author, "EN", false)).rejects.toThrow();
+  });
+});

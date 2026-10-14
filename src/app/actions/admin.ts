@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { getDb } from "@/db";
 import { applyBatch, cancelBatch, createQuestionDraft, dryRunBatch, neutralizeQuestion, resolveReport, supportLookup, transitionContent, type BatchReport } from "@/server/editorialAdmin";
 import { approveConfig, createDraft } from "@/server/sessionConfig";
+import { setEstimationMode, type EstimationMode } from "@/server/estimation";
+import { correctNewsFact } from "@/server/news";
+import { setLanguageOpen } from "@/server/languages";
 import { attempt, getActor } from "@/server/next";
 import type { ContentStatus } from "@/lib/editorial";
 
@@ -102,4 +105,35 @@ export async function supportLookupAction(_: SupportState, form: FormData): Prom
   const r = await attempt(async () => supportLookup(getDb(), await getActor(), String(form.get("attemptId") ?? "").trim()));
   if (!r.ok) return { message: r.message };
   return { result: r.data };
+}
+
+export async function estimationModeAction(_: AdminState, form: FormData): Promise<AdminState> {
+  const r = await attempt(async () => setEstimationMode(getDb(), await getActor(), String(form.get("mode")) as EstimationMode));
+  if (!r.ok) return { message: r.message };
+  revalidatePath("/admin/estimation");
+  return { ok: true, message: r.data === "simple" ? "Système simple rétabli." : "Estimation probabiliste activée." };
+}
+
+export async function correctNewsAction(_: AdminState, form: FormData): Promise<AdminState> {
+  const r = await attempt(async () =>
+    correctNewsFact(
+      getDb(),
+      await getActor(),
+      String(form.get("id")),
+      { summary: (form.get("summary") as string) || undefined, eventDate: (form.get("eventDate") as string) || undefined },
+      String(form.get("reason") ?? ""),
+    ),
+  );
+  if (!r.ok) return { message: r.message };
+  revalidatePath("/admin/contenus");
+  const q = r.data.suspendedQuestions;
+  return { ok: true, message: `Nouvelle version créée en brouillon, ancienne fiche suspendue. ${q.length ? `Questions suspendues en attendant relecture : ${q.map((x) => x.questionId).join(", ")}.` : "Aucune question liée."}` };
+}
+
+export async function languageOpenAction(_: AdminState, form: FormData): Promise<AdminState> {
+  const open = form.get("open") === "1";
+  const r = await attempt(async () => setLanguageOpen(getDb(), await getActor(), String(form.get("code")), open));
+  if (!r.ok) return { message: r.message };
+  revalidatePath("/admin");
+  return { ok: true, message: `${r.data.name} ${open ? "ouverte" : "fermée"} aux élèves.` };
 }

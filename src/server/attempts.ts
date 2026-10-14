@@ -8,6 +8,7 @@ import { pickDueReviews } from "@/lib/spaced";
 import { assertRole, type Actor } from "./auth";
 import { AppError, badRequest, conflict, notFound } from "./errors";
 import { applyToReviewLog, masteryMap, questionsByIds, recomputeMastery, seenQuestionIds } from "./learning";
+import { getEstimationMode, selectionScore } from "./estimation";
 import { getPublishedConfig } from "./sessionConfig";
 import { markPlanTaskDone } from "./plan";
 
@@ -30,6 +31,10 @@ export type AttemptMeta = {
   skippedSections?: string[];
   title?: string;
   advanced?: boolean;
+  /** Série téléchargée pour être faite hors connexion (OFF-01). */
+  offline?: boolean;
+  /** Niveau d'aide de l'assistant demandé par question (1 indice, 2 démarche, 3 solution) : la réponse compte comme aidée. */
+  aiHelp?: Record<string, number>;
 };
 
 const LEARNING_KINDS: AttemptKind[] = ["practice", "review", "diagnostic"];
@@ -40,7 +45,7 @@ export type SessionSize = keyof typeof SIZES;
 const meta = (a: Attempt) => a.meta as AttemptMeta;
 const student = (actor: Actor | null) => assertRole(actor, ["student"]);
 
-async function loadOwned(db: DB, actor: Actor, id: string) {
+export async function loadOwned(db: DB, actor: Actor, id: string) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) throw notFound("Tentative");
   const a = await db.query.attempts.findFirst({ where: eq(attempts.id, id) });
   // Un identifiant trouvé dans une URL ne donne aucun droit : même réponse que si la tentative n'existait pas.
@@ -83,7 +88,7 @@ async function openSubjectCodes(db: DB, secondLanguage: string) {
 
 // ---------- Création ----------
 
-export async function createPractice(db: DB, actorIn: Actor | null, opts: { subjectCode?: string; skillId?: string; size?: SessionSize; planTaskId?: string }) {
+export async function createPractice(db: DB, actorIn: Actor | null, opts: { subjectCode?: string; skillId?: string; size?: SessionSize; planTaskId?: string; offline?: boolean }) {
   const actor = student(actorIn);
   const profile = await getProfile(db, actor.id);
   const allowed = await openSubjectCodes(db, profile.secondLanguage);
@@ -93,7 +98,8 @@ export async function createPractice(db: DB, actorIn: Actor | null, opts: { subj
   if (pool.length === 0) throw new AppError("no_content", 404, "Aucune question publiée pour cette sélection pour l'instant. Choisis une autre notion ou une autre matière.");
   const { seen, families } = await seenQuestionIds(db, actor.id);
   const mastery = await masteryMap(db, actor.id);
-  const skillScore = new Map<string, number | null>([...mastery.entries()].map(([k, v]) => [k, v.status === "insufficient" && v.autonomousAttempts < 3 ? null : v.score]));
+  const mode = await getEstimationMode(db);
+  const skillScore = new Map<string, number | null>([...mastery.entries()].map(([k, v]) => [k, selectionScore(mode, v)]));
   const selected = selectQuestions(pool.map(toCandidate), { seenQuestions: seen, seenFamilies: families, skillScore, targetSkill: opts.skillId, now: new Date() }, SIZES[opts.size ?? "normal"]);
   const reasons = Object.fromEntries(selected.map((s) => [s.id, s.reason]));
   const [a] = await db
@@ -103,7 +109,7 @@ export async function createPractice(db: DB, actorIn: Actor | null, opts: { subj
       kind: "practice",
       subjectCode: opts.subjectCode ?? null,
       questionVersionIds: selected.map((s) => s.id),
-      meta: { reasons, planTaskId: opts.planTaskId, title: "Série d'entraînement" } satisfies AttemptMeta,
+      meta: { reasons, planTaskId: opts.planTaskId, title: opts.offline ? "Série hors connexion" : "Série d'entraînement", offline: opts.offline || undefined } satisfies AttemptMeta,
     })
     .returning();
   return a;
@@ -403,7 +409,7 @@ export async function saveResponse(db: DB, actorIn: Actor | null, id: string, in
     receivedAt: now,
     durationMs: Math.max(0, Math.min(input.durationMs ?? 0, 4 * 3_600_000)),
     confidence: input.confidence ?? null,
-    hintsUsed: m.hints?.[qv.id] ?? 0,
+    hintsUsed: Math.max(m.hints?.[qv.id] ?? 0, m.aiHelp?.[qv.id] ?? 0),
     isCorrect: score.isCorrect,
     points: score.points,
     maxPoints: score.maxPoints,

@@ -85,6 +85,7 @@ test("concours blanc strict : aucun corrigé envoyé avant la fin", async ({ pag
   await register(page);
   await launchExam(page, "Mathématiques", "strict");
   await expect(page.getByRole("timer")).toBeVisible();
+  await expect(page.getByTestId("assistant")).toHaveCount(0);
   const id = page.url().split("/seance/")[1];
   const body = await page.evaluate(async (a) => (await fetch(`/api/attempts/${a}`)).text(), id);
   expect(body).not.toMatch(/justification|"explanation"|"correct":true/);
@@ -134,4 +135,73 @@ test("administration : connexion avec code à usage unique et écrans principaux
   await page.getByRole("button", { name: "Validation à blanc" }).click();
   await expect(page.getByText("Rien n'a été écrit")).toBeVisible();
   await expect(page.locator("textarea")).toHaveValue('[{"questionId":"X"}]');
+});
+
+test("assistant encadré : indice gradué avec appuis, repli éditorial sans clé @mobile", async ({ page }) => {
+  await register(page);
+  await page.goto("/entrainement");
+  await page.locator("form button.btn.primary").first().click();
+  await page.waitForURL(/seance\//);
+  await page.getByRole("button", { name: "Aide de l'assistant" }).click();
+  await page.getByRole("button", { name: "Assistant : indice" }).click();
+  await expect(page.getByText(/Aide rédigée par l.équipe|Réponse de l.assistant/)).toBeVisible();
+  await expect(page.getByText(/^Appuis : Question .+ version \d+/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Assistant : démarche" })).toBeVisible();
+});
+
+test("oraux : dossier, simulation écrite sans caméra et retour sur six critères @mobile", async ({ page }) => {
+  await register(page);
+  await page.goto("/oraux");
+  await expect(page.getByText(/École de démonstration/).first()).toBeVisible();
+  await page.getByRole("button", { name: "Ajouter un élément" }).click();
+  await page.selectOption("#d-cat", "engagement");
+  await page.fill("#d-title", "Trésorier du club de basket");
+  await page.fill("#d-details", "Budget du club, 40 adhérents.");
+  await page.getByRole("button", { name: "Enregistrer" }).click();
+  await expect(page.getByText("Trésorier du club de basket")).toBeVisible();
+  await page.getByRole("button", { name: "Construire ma présentation" }).click();
+  await expect(page.getByText(/Plan type construit à partir de ton dossier|Proposition de l.assistant/)).toBeVisible();
+
+  await page.selectOption("#sim-sheet", { index: 1 });
+  await page.getByRole("button", { name: "Lancer une simulation" }).click();
+  await expect(page).toHaveURL(/oraux\/simulation\//);
+  for (let i = 0; i < 4; i++) {
+    await page.fill("#oral-answer", "D'abord, je suis trésorier du club de basket depuis 2 ans, parce que j'aime gérer un projet. Ensuite, l'international m'attire.");
+    await page.getByRole("button", { name: "Question suivante" }).click();
+    await expect(page.getByText(`Question ${i + 2} sur 5`)).toBeVisible();
+  }
+  await page.fill("#oral-answer", "Enfin, je veux travailler dans une équipe internationale.");
+  await page.getByRole("button", { name: "Terminer et voir le retour" }).click();
+  await expect(page.getByRole("heading", { name: "Retour" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Précision linguistique" })).toBeVisible();
+  await expect(page.getByText(/ne prédit pas l.avis d.un jury/)).toBeVisible();
+  await page.getByRole("button", { name: "Supprimer la transcription" }).click();
+  await expect(page).toHaveURL(/\/oraux$/);
+});
+
+test("langues, actualité et cartes : écoute avec transcription, frise, carte personnelle @mobile", async ({ page }) => {
+  await register(page);
+  await page.goto("/apprendre/langues");
+  await expect(page.getByText(/Format oral, distinct des épreuves écrites/)).toBeVisible();
+  const first = page.locator("article").first();
+  const toggle = first.getByRole("checkbox");
+  if (await toggle.isEnabled()) await toggle.check();
+  await expect(first.locator(".lesson-body")).toBeVisible();
+  await first.locator("label.option").first().click();
+  await expect(first.locator(".justif").first()).toBeVisible();
+
+  await page.goto("/apprendre/actualites?vue=frise");
+  await expect(page.getByRole("list", { name: "Frise chronologique" })).toBeVisible();
+  await expect(page.getByText("Adoption de l'accord de Paris sur le climat")).toBeVisible();
+
+  await page.goto("/entrainement/cartes");
+  await page.fill("#c-front", "to rely on");
+  await page.fill("#c-back", "compter sur");
+  await page.selectOption("#c-subject", "EN");
+  await page.getByRole("button", { name: "Créer la carte" }).click();
+  await expect(page.getByText(/Mes cartes \(1\)/)).toBeVisible();
+  await page.getByRole("button", { name: /Réviser mes cartes/ }).click();
+  await page.getByRole("button", { name: "Voir la réponse" }).click();
+  await page.getByRole("button", { name: "Je savais" }).click();
+  await expect(page.getByText("Révision terminée.")).toBeVisible();
 });

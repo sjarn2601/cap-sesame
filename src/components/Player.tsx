@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { AttemptView } from "@/server/attempts";
 import { CorrectionPanel, OptionsList, Stem, type ViewCorrection } from "./QuestionView";
 import { DocumentPane } from "./DocumentPane";
+import { AssistantPanel } from "./AssistantPanel";
 
 type Q = AttemptView["questions"][number];
 type SaveState = "saving" | "saved" | "pending" | "error";
@@ -375,6 +376,9 @@ export function Player({ initial }: { initial: AttemptView }) {
         </fieldset>
       )}
       {correction && showCorrections && <CorrectionPanel correction={correction} lessonHref={correction.lessonAnchor ? `/apprendre/cours/${q.lessonId}#${correction.lessonAnchor}` : `/apprendre/cours/${q.lessonId}`} onReport={report} />}
+      {(view.kind === "practice" || view.kind === "review") && saveState[q.id] !== "pending" && (
+        <AssistantPanel key={`${q.id}-${correction ? "x" : "h"}`} kind="question" attemptId={view.id} questionVersionId={q.id} phase={correction ? "explain" : "hint"} />
+      )}
       {view.kind === "diagnostic" && saveState[q.id] === "saved" && <p className="notice ok" role="status">Réponse enregistrée. Les corrections seront dans ton bilan.</p>}
 
       <div className="row">

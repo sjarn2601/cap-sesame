@@ -209,3 +209,117 @@ export const SESSION_2027: SessionConfigBody = {
     { id: "S5", label: "Règlement 2026 (annonce du règlement 2026-2027)", url: "https://www.concours-sesame.net/media/8952/Concours-SESAME-2026-Reglement-concours.pdf" },
   ],
 };
+
+// ---------- Oraux (ORA-01) ----------
+// Fiches de démonstration : écoles fictives. Les vraies fiches sont rédigées école par école à partir des pages officielles.
+export const PROGRAM_SHEETS = [
+  {
+    school: "École de démonstration Atlantique",
+    program: "Programme Grande École post-bac (exemple)",
+    campus: "Campus de démonstration, Nantes",
+    sessionCode: "2027",
+    oralFormat: "Entretien individuel d'environ 20 minutes : présentation libre, échange sur le projet et questions de motivation. Format fictif donné à titre d'exemple.",
+    expectations: ["Expliquer pourquoi ce programme plutôt qu'un autre", "S'appuyer sur des expériences vécues", "Montrer une curiosité pour l'international"],
+    keywords: ["international", "échange", "projet", "associatif", "entreprise", "langues"],
+    questions: ["Qu'est-ce qui t'attire dans un parcours avec une année à l'étranger ?", "Quel cours de ce programme te semble le plus utile pour ton projet, et pourquoi ?"],
+    sources: [{ label: "Exemple fictif : à remplacer par la page officielle de l'école", url: "https://www.concours-sesame.net/" }],
+  },
+  {
+    school: "École de démonstration Rhône",
+    program: "Bachelor management et numérique (exemple)",
+    campus: "Campus de démonstration, Lyon",
+    sessionCode: "2027",
+    oralFormat: "Entretien collectif puis individuel. Format fictif donné à titre d'exemple : chaque école fixe ses propres modalités.",
+    expectations: ["Travailler en groupe et écouter les autres", "Relier le numérique à un projet concret", "Argumenter sans réciter"],
+    keywords: ["numérique", "groupe", "équipe", "données", "projet", "management"],
+    questions: ["Raconte une situation où tu as dû convaincre un groupe.", "Comment le numérique transforme-t-il un métier qui t'intéresse ?"],
+    sources: [{ label: "Exemple fictif : à remplacer par la page officielle de l'école", url: "https://www.concours-sesame.net/" }],
+  },
+];
+
+export const MOTIVATION_QUESTIONS = [
+  "Présente-toi en deux minutes, comme tu le ferais devant le jury.",
+  "Pourquoi une école de commerce après le bac plutôt qu'une autre voie ?",
+  "Quel métier ou quel domaine t'attire aujourd'hui, et qu'as-tu fait pour le découvrir ?",
+  "Quelle qualité et quel défaut te décrivent le mieux ? Donne un exemple pour chacun.",
+  "Qu'est-ce qui te fait penser que tu réussiras dans un programme exigeant ?",
+];
+
+export const PARCOURS_QUESTIONS: Record<string, string> = {
+  experience: "Raconte une expérience qui t'a appris quelque chose sur toi.",
+  engagement: "Parle-moi d'un engagement (association, sport, bénévolat…) et de ce que tu y fais concrètement.",
+  reussite: "De quelle réussite es-tu le plus fier ou la plus fière, et pourquoi ?",
+  difficulte: "Décris une difficulté que tu as surmontée et ce que tu en as retenu.",
+  interet: "Quel sujet te passionne en dehors des cours ? Qu'est-ce que cela dit de toi ?",
+  projet: "Où te vois-tu dans cinq ans, et quelles étapes as-tu prévues ?",
+};
+
+// ---------- Actualité enrichie (ACT-02) ----------
+const UNFCCC = { label: "CCNUCC, l'accord de Paris", url: "https://unfccc.int/fr/a-propos-des-ndcs/l-accord-de-paris" };
+const CONSILIUM = { label: "Conseil de l'Union européenne", url: "https://www.consilium.europa.eu/fr/" };
+export const NEWS_EXTRA: Record<string, { slug: string; zone: string; viewpoints: { actor: string; position: string; source: { label: string; url: string } }[] }> = {
+  "Adoption de l'accord de Paris sur le climat": {
+    slug: "accord-paris",
+    zone: "Monde",
+    viewpoints: [
+      { actor: "Petits États insulaires", position: "Ont défendu la mention de l'objectif de 1,5 °C, jugé vital face à la montée des eaux.", source: UNFCCC },
+      { actor: "Grands pays émetteurs", position: "Ont privilégié des contributions fixées par chaque pays plutôt que des objectifs imposés.", source: UNFCCC },
+    ],
+  },
+  "Sortie du Royaume-Uni de l'Union européenne": {
+    slug: "brexit",
+    zone: "Europe",
+    viewpoints: [
+      { actor: "Gouvernement britannique", position: "Présente le retrait comme la reprise du contrôle des lois, des frontières et de la politique commerciale.", source: CONSILIUM },
+      { actor: "Union européenne", position: "Insiste sur l'intégrité du marché unique et sur l'absence de frontière physique en Irlande.", source: CONSILIUM },
+    ],
+  },
+  "Élections européennes de juin 2024": { slug: "europeennes-2024", zone: "Europe", viewpoints: [] },
+};
+
+// ---------- Exercices oraux de langue (LAN-02), contenus originaux ----------
+export const LANGUAGE_EXERCISES = [
+  {
+    exerciseId: "EN-LIS-001", subjectCode: "EN", kind: "listening" as const, title: "A change of plans", level: "B1",
+    text: "Hi Sam, it's Laura. I'm afraid the meeting has been moved from Tuesday to Thursday morning, because the manager is travelling on Tuesday. Could you bring the sales figures? See you on Thursday at nine.",
+    question: "Why has the meeting been moved?",
+    options: [
+      { id: "a", text: "The manager is away on Tuesday.", correct: true, justification: "« because the manager is travelling on Tuesday »." },
+      { id: "b", text: "Sam is ill.", correct: false, justification: "Rien n'est dit sur la santé de Sam." },
+      { id: "c", text: "The sales figures are not ready.", correct: false, justification: "Laura demande d'apporter les chiffres, ils existent donc." },
+    ],
+  },
+  {
+    exerciseId: "EN-LIS-002", subjectCode: "EN", kind: "listening" as const, title: "Library opening hours", level: "B1",
+    text: "Welcome to the city library. Please note that from next Monday, we will open at ten instead of nine, but we will close later, at eight in the evening. The study rooms can now be booked online.",
+    question: "What is new about the study rooms?",
+    options: [
+      { id: "a", text: "They close at eight.", correct: false, justification: "C'est la bibliothèque qui ferme à huit heures." },
+      { id: "b", text: "They can be booked online.", correct: true, justification: "« The study rooms can now be booked online »." },
+      { id: "c", text: "They open at nine.", correct: false, justification: "Neuf heures était l'ancienne heure d'ouverture." },
+    ],
+  },
+  { exerciseId: "EN-READ-001", subjectCode: "EN", kind: "read_aloud" as const, title: "Present perfect", level: "B1", text: "I have lived in this town since I was ten, and I have never regretted it.", transcriptByDefault: true },
+  { exerciseId: "EN-READ-002", subjectCode: "EN", kind: "read_aloud" as const, title: "Business vocabulary", level: "B2", text: "Our company has increased its turnover by twelve percent thanks to a new marketing strategy.", transcriptByDefault: true },
+  {
+    exerciseId: "EN-CONV-001", subjectCode: "EN", kind: "conversation" as const, title: "Talking about yourself", level: "B1", text: "Answer each question aloud in two or three sentences.", transcriptByDefault: true,
+    prompts: ["What do you usually do at the weekend?", "Which subject do you enjoy most at school, and why?", "Where would you like to study after your baccalaureate?"],
+    modelAnswer: "Example only: « At the weekend I usually play basketball with my club, and on Sunday I revise for my exams. »",
+  },
+  {
+    exerciseId: "ES-LIS-001", subjectCode: "LV-ES", kind: "listening" as const, title: "En la estación", level: "B1",
+    text: "Atención, por favor. El tren con destino a Sevilla saldrá con veinte minutos de retraso desde el andén cuatro. Disculpen las molestias.",
+    question: "¿Qué problema tiene el tren?",
+    options: [
+      { id: "a", text: "Sale con retraso.", correct: true, justification: "« saldrá con veinte minutos de retraso »." },
+      { id: "b", text: "Está cancelado.", correct: false, justification: "El tren no se cancela." },
+      { id: "c", text: "Cambia de destino.", correct: false, justification: "El destino sigue siendo Sevilla." },
+    ],
+  },
+  { exerciseId: "ES-READ-001", subjectCode: "LV-ES", kind: "read_aloud" as const, title: "Ser y estar", level: "B1", text: "Mi hermana es médica y ahora está en Madrid por trabajo.", transcriptByDefault: true },
+  {
+    exerciseId: "ES-CONV-001", subjectCode: "LV-ES", kind: "conversation" as const, title: "Presentarse", level: "A2", text: "Responde a cada pregunta en voz alta con dos o tres frases.", transcriptByDefault: true,
+    prompts: ["¿Cómo es tu ciudad?", "¿Qué haces en tu tiempo libre?"],
+    modelAnswer: "Ejemplo: « Vivo en una ciudad pequeña cerca del mar. Los fines de semana juego al fútbol con mis amigos. »",
+  },
+];

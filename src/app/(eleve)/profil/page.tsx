@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { InstallApp } from "@/components/InstallApp";
 import { asc } from "drizzle-orm";
 import { getDb } from "@/db";
 import { subjects } from "@/db/schema";
@@ -22,6 +24,8 @@ export default async function Page() {
     <div className="container stack" style={{ maxWidth: 820 }}>
       <h1>Profil</h1>
       <p className="muted">{actor.email}</p>
+      <InstallApp />
+      <p className="small"><Link href="/hors-ligne">Mes contenus hors connexion</Link></p>
 
       <ActionForm action={saveProfileAction} className="card stack">
         <h2>Préparation</h2>

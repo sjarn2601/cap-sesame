@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getDb } from "@/db";
 import { listContent } from "@/server/editorialAdmin";
 import { requireStaff } from "@/server/next";
-import { transitionAction } from "@/app/actions/admin";
+import { correctNewsAction, transitionAction } from "@/app/actions/admin";
 import { AdminForm, AdminSubmit } from "@/components/AdminForm";
 import { NEXT } from "@/components/editorialNext";
 import { STATUS_LABELS } from "@/lib/editorial";
@@ -64,7 +64,24 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ o
                     <td>{n.sources.length}</td>
                     <td>{frDate(n.lastVerifiedAt)}{n.status === "published" && n.lastVerifiedAt < staleBefore ? <span className="badge warn"> à revérifier</span> : null}</td>
                     <td><span className="badge">{STATUS_LABELS[n.status]}</span>{n.isDemo ? " · démo" : ""}</td>
-                    <td><Transitions type="news" id={n.id} status={n.status} /></td>
+                    <td>
+                      <Transitions type="news" id={n.id} status={n.status} />
+                      {n.status === "published" && (
+                        <details style={{ marginTop: 6 }}>
+                          <summary className="small">Corriger un fait</summary>
+                          <AdminForm action={correctNewsAction} className="stack">
+                            <input type="hidden" name="id" value={n.id} />
+                            <label className="small" htmlFor={`sum-${n.id}`}>Résumé corrigé</label>
+                            <textarea id={`sum-${n.id}`} name="summary" defaultValue={n.summary} rows={3} />
+                            <label className="small" htmlFor={`date-${n.id}`}>Date de l&apos;événement</label>
+                            <input id={`date-${n.id}`} type="date" name="eventDate" defaultValue={n.eventDate} />
+                            <input type="text" name="reason" placeholder="Ce qui change et la source" aria-label="Motif de la correction" required />
+                            <p className="small muted">Crée une nouvelle version à relire ; la fiche actuelle et les questions liées sont suspendues aussitôt.</p>
+                            <AdminSubmit className="btn small danger">Corriger et suspendre</AdminSubmit>
+                          </AdminForm>
+                        </details>
+                      )}
+                    </td>
                   </tr>
                 ))
               : (rows as (typeof lessonVersions.$inferSelect)[]).map((l) => (

@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto";
 import { eq, inArray } from "drizzle-orm";
 import type { DB } from "@/db";
-import { attempts, consentRecords, contentReports, deletionRequests, masterySnapshots, personalNotes, profiles, responses, reviewItems, scoreVersions, studyPlans, users, lessonViews } from "@/db/schema";
+import { attempts, consentRecords, contentReports, deletionRequests, masterySnapshots, personalNotes, profiles, responses, reviewItems, scoreVersions, studyPlans, users, lessonViews, oralDossiers, oralSessions, aiUsage, personalCards } from "@/db/schema";
 import { verifyPassword } from "@/lib/password";
 import { assertRole, type Actor } from "./auth";
 import { AppError } from "./errors";
@@ -28,6 +28,10 @@ export async function exportData(db: DB, actorIn: Actor | null) {
     notes: await db.select().from(personalNotes).where(eq(personalNotes.userId, actor.id)),
     lessonViews: await db.select().from(lessonViews).where(eq(lessonViews.userId, actor.id)),
     reports: await db.select().from(contentReports).where(eq(contentReports.userId, actor.id)),
+    personalCards: await db.select().from(personalCards).where(eq(personalCards.userId, actor.id)),
+    oralDossier: (await db.query.oralDossiers.findFirst({ where: eq(oralDossiers.userId, actor.id) }))?.entries ?? [],
+    oralSimulations: await db.select().from(oralSessions).where(eq(oralSessions.userId, actor.id)),
+    assistantUsage: await db.select({ day: aiUsage.day, mode: aiUsage.mode, outcome: aiUsage.outcome }).from(aiUsage).where(eq(aiUsage.userId, actor.id)),
   };
 }
 
@@ -53,7 +57,7 @@ export async function deleteAccount(db: DB, actorIn: Actor | null, password: str
   const steps = [
     ...req.steps,
     { step: "Données applicatives supprimées", at: new Date().toISOString() },
-    { step: "Sous-traitants : aucun traitement externe dans cette version", at: new Date().toISOString() },
+    { step: "Sous-traitants : l'assistant IA ne reçoit ni nom ni e-mail et l'application ne conserve pas les échanges", at: new Date().toISOString() },
     { step: "Sauvegardes : expiration selon la durée documentée", at: new Date().toISOString() },
   ];
   await db.update(deletionRequests).set({ status: "closed", steps, closedAt: new Date() }).where(eq(deletionRequests.id, req.id));

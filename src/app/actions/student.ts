@@ -10,6 +10,7 @@ import { updateReviewItem } from "@/server/reviewLog";
 import { deleteAccount } from "@/server/privacy";
 import { attempt, clearSessionCookie, getActor } from "@/server/next";
 import type { ErrorCause } from "@/lib/spaced";
+import { createWeeklyQuiz } from "@/server/news";
 
 export type ActionState = { message?: string; ok?: boolean } | undefined;
 
@@ -169,4 +170,11 @@ export async function deleteAccountAction(_: ActionState, form: FormData): Promi
   if (!r.ok) return { message: r.message };
   await clearSessionCookie();
   redirect(`/compte-supprime?ref=${r.data}`);
+}
+
+export async function startNewsQuizAction(_: ActionState, _form: FormData): Promise<ActionState> {
+  const actor = await getActor();
+  const r = await attempt(() => createWeeklyQuiz(getDb(), actor));
+  if (!r.ok) return { message: r.message };
+  redirect(`/seance/${r.data.id}`);
 }

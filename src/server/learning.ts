@@ -3,6 +3,7 @@ import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import type { DB } from "@/db";
 import { attempts, masterySnapshots, questionVersions, responses, reviewItems } from "@/db/schema";
 import { computeMastery, MASTERY_WEIGHTS } from "@/lib/mastery";
+import { estimateSkill } from "@/lib/estimation";
 import { inferCause, onError, onSuccess, type ErrorCause } from "@/lib/spaced";
 import type { QuestionScore } from "@/lib/scoring";
 
@@ -18,6 +19,7 @@ export async function recomputeMastery(db: DB, userId: string, skillIds: string[
         isCorrect: responses.isCorrect,
         hintsUsed: responses.hintsUsed,
         familyId: questionVersions.familyId,
+        difficulty: questionVersions.difficulty,
         kind: attempts.kind,
       })
       .from(responses)
@@ -33,9 +35,9 @@ export async function recomputeMastery(db: DB, userId: string, skillIds: string[
           sql`${responses.isCorrect} is not null`,
         ),
       );
-    const m = computeMastery(
-      rows.map((r) => ({ at: r.at, correct: !!r.isCorrect, autonomous: r.hintsUsed === 0 && !AIDED_KINDS.has(r.kind), familyId: r.familyId })),
-    );
+    const events = rows.map((r) => ({ at: r.at, correct: !!r.isCorrect, autonomous: r.hintsUsed === 0 && !AIDED_KINDS.has(r.kind), familyId: r.familyId, difficulty: r.difficulty }));
+    const m = computeMastery(events);
+    const est = estimateSkill(events);
     const values = {
       userId,
       skillId,
@@ -46,6 +48,10 @@ export async function recomputeMastery(db: DB, userId: string, skillIds: string[
       families: m.families,
       distinctDays: m.distinctDays,
       weightsVersion: MASTERY_WEIGHTS.version,
+      probMean: est.mean,
+      probLow: est.low,
+      probHigh: est.high,
+      probStatus: est.status,
       computedAt: new Date(),
     };
     await db.insert(masterySnapshots).values(values).onConflictDoUpdate({ target: [masterySnapshots.userId, masterySnapshots.skillId], set: values });
