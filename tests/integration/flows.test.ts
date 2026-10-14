@@ -283,3 +283,45 @@ describe("R08 : export et suppression", () => {
     await expect(login(db, "throttle@test.fr", PW, "1.2.3.4")).rejects.toMatchObject({ code: "throttled" });
   });
 });
+
+describe("OFF-01 : séries hors connexion", () => {
+  it("synchronisation sans doublon, question retirée signalée, limite de séries", async () => {
+    const { createOfflinePack, syncOffline, MAX_OFFLINE_PACKS } = await import("@/server/offline");
+    const a = await newStudent("off01@test.fr");
+    const pack = await createOfflinePack(db, a, { subjectCode: "MATH", size: "short" });
+    expect(pack.questions.length).toBe(5);
+    expect(pack.questions[0].options.some((o) => o.correct) || pack.questions[0].numericAnswer !== null).toBe(true);
+
+    // Une question est retirée pendant que l'élève est hors connexion.
+    const retired = pack.questions[0];
+    await db.update(s.questionVersions).set({ status: "retired" }).where(eq(s.questionVersions.id, retired.id));
+
+    const answers = pack.questions.slice(0, 3).map((q, i) => ({
+      questionVersionId: q.id,
+      clientId: `local-${i}-${q.id}`,
+      selected: q.format === "numeric" ? [] : [q.options[0].id],
+      numericValue: q.format === "numeric" ? 1 : null,
+      durationMs: 15000,
+      answeredAt: new Date(Date.now() + i * 1000).toISOString(),
+    }));
+    const first = await syncOffline(db, a, pack.attemptId, answers, {}, false);
+    expect(first.accepted).toBe(3);
+    expect(first.withdrawn).toContain(retired.questionId);
+    // Le réseau coupe pendant l'envoi : l'appareil renvoie les mêmes réponses.
+    const replay = await syncOffline(db, a, pack.attemptId, answers, {}, false);
+    expect(replay.accepted).toBe(0);
+    expect(replay.duplicates).toBe(3);
+    const rows = await db.select().from(s.responses).where(eq(s.responses.attemptId, pack.attemptId));
+    expect(rows).toHaveLength(3);
+
+    const done = await syncOffline(db, a, pack.attemptId, [], {}, true);
+    expect(done.finalized).toBe(true);
+    await db.update(s.questionVersions).set({ status: "published" }).where(eq(s.questionVersions.id, retired.id));
+
+    for (let i = 0; i < MAX_OFFLINE_PACKS; i++) await createOfflinePack(db, a, { size: "short" });
+    await expect(createOfflinePack(db, a, { size: "short" })).rejects.toThrow(/déjà/);
+
+    const other = await newStudent("off01b@test.fr");
+    await expect(syncOffline(db, other, pack.attemptId, [], {}, true)).rejects.toThrow();
+  });
+});

@@ -30,6 +30,8 @@ export type AttemptMeta = {
   skippedSections?: string[];
   title?: string;
   advanced?: boolean;
+  /** Série téléchargée pour être faite hors connexion (OFF-01). */
+  offline?: boolean;
 };
 
 const LEARNING_KINDS: AttemptKind[] = ["practice", "review", "diagnostic"];
@@ -83,7 +85,7 @@ async function openSubjectCodes(db: DB, secondLanguage: string) {
 
 // ---------- Création ----------
 
-export async function createPractice(db: DB, actorIn: Actor | null, opts: { subjectCode?: string; skillId?: string; size?: SessionSize; planTaskId?: string }) {
+export async function createPractice(db: DB, actorIn: Actor | null, opts: { subjectCode?: string; skillId?: string; size?: SessionSize; planTaskId?: string; offline?: boolean }) {
   const actor = student(actorIn);
   const profile = await getProfile(db, actor.id);
   const allowed = await openSubjectCodes(db, profile.secondLanguage);
@@ -103,7 +105,7 @@ export async function createPractice(db: DB, actorIn: Actor | null, opts: { subj
       kind: "practice",
       subjectCode: opts.subjectCode ?? null,
       questionVersionIds: selected.map((s) => s.id),
-      meta: { reasons, planTaskId: opts.planTaskId, title: "Série d'entraînement" } satisfies AttemptMeta,
+      meta: { reasons, planTaskId: opts.planTaskId, title: opts.offline ? "Série hors connexion" : "Série d'entraînement", offline: opts.offline || undefined } satisfies AttemptMeta,
     })
     .returning();
   return a;

@@ -17,7 +17,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   });
   if (view.status !== "in_progress") redirect(view.kind === "diagnostic" && view.title.startsWith("Diagnostic d'orientation") ? `/diagnostic/${id}/bilan` : `/seance/${id}/resultat`);
   return (
-    <div className="container wide">
+    <div className="container wide player-page">
       <Player initial={view} />
     </div>
   );

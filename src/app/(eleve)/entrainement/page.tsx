@@ -5,6 +5,7 @@ import { getReviewLog } from "@/server/reviewLog";
 import { requireStudent } from "@/server/next";
 import { ActionForm, Submit } from "@/components/ActionForm";
 import { startPracticeAction, startReviewAction, startExamAction } from "@/app/actions/student";
+import { DownloadSeries } from "@/components/OfflineButtons";
 
 export const metadata = { title: "S'entraîner" };
 export const dynamic = "force-dynamic";
@@ -80,6 +81,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ n
           <div><Submit className="btn" pendingText="Préparation…">Ouvrir un dossier</Submit></div>
         </ActionForm>
       )}
+      <DownloadSeries subjects={practicable.map((s) => ({ code: s.code, name: s.name }))} />
     </div>
   );
 }

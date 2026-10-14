@@ -90,8 +90,27 @@ Principes :
 | PRI-01, SEC-01, DRO-01 | Fait côté application : page données personnelles, consentement, export, suppression de compte, registre des droits. La documentation juridique et l'hébergement restent à faire. |
 | ADM-01, QUAL-01 tableau de bord | Fait : contenus en attente, couverture, signalements, actualités à revérifier |
 | OPS-01 exploitation | Partiel : `/api/health` seulement. Supervision, alertes et sauvegardes dépendent de l'hébergement. |
-| TEC-01, OFF-01 | Web responsive et manifeste d'installation. Le hors-ligne (P1) n'est pas fait. |
+| TEC-01 | Web responsive, utilisable à 360 px |
+| OFF-01 hors connexion (lot B) | Fait : appli installable, cours et séries libres téléchargés explicitement, réponses synchronisées sans doublon, données effacées à la déconnexion |
 | P1 et P2 (IA, oraux avancés, collectif, projection pondérée…) | Hors lot A. La page Oraux donne une préparation de base. |
+
+## Version mobile
+
+L'application s'installe depuis le navigateur du téléphone (application web progressive) :
+
+- **Android (Chrome)** : bouton « Installer » sur la page Aujourd'hui ou dans le Profil.
+- **iPhone (Safari)** : Partager, puis « Sur l'écran d'accueil ».
+
+Une fois installée : icône, plein écran, prise en compte des encoches, barre de navigation en bas, mode concentration pendant les séances (la barre disparaît).
+
+### Hors connexion
+
+- L'élève télécharge explicitement un cours (« Disponible hors connexion ») ou une série libre (page S'entraîner). Limites : 10 cours, 3 séries non synchronisées.
+- `/hors-ligne` liste ce qui est disponible sans réseau et ce qui ne l'est pas. Le diagnostic, les concours blancs (temps tenu par le serveur) et les révisions demandent une connexion.
+- Chaque réponse locale reçoit un identifiant unique. Au retour du réseau, le serveur déduplique, note à nouveau (sa note fait foi) et signale les questions retirées depuis le téléchargement ; elles ne comptent plus dans la maîtrise.
+- Règle de conflit : en série libre, la première réponse reçue pour une question fait foi, comme en ligne.
+- Aucune page personnelle n'est mise en cache automatiquement. À la déconnexion, les séries et cours téléchargés sont effacés de l'appareil.
+- Le service worker (`public/sw.js`) n'est actif qu'en production (`npm run build && npm start`), ou en développement avec `NEXT_PUBLIC_SW=1`.
 
 ## Limites connues
 

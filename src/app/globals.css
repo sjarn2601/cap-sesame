@@ -815,88 +815,39 @@ table.data th {
 
 .offline-banner {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 50;
-  background: var(--warn-soft);
-  color: var(--text);
-  text-align: center;
+  left: 12px;
+  right: 12px;
+  bottom: calc(72px + env(safe-area-inset-bottom));
+  z-index: 40;
+  margin: 0 auto;
+  width: fit-content;
+  max-width: calc(100vw - 24px);
+  height: auto;
+  background: var(--text);
+  color: var(--bg);
   padding: 8px 16px;
-  font-weight: 600;
-  border-bottom: 1px solid var(--border);
-}
-
-.footer {
-  border-top: 1px solid var(--border);
-  padding: 24px 0 96px;
-  color: var(--muted);
-  font-size: 0.875rem;
-}
-
-.lesson-body {
-  white-space: pre-wrap;
-}
-.flashcard {
-  perspective: 800px;
-}
-.flashcard button {
-  width: 100%;
-  min-height: 110px;
   border-radius: 12px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-  font-size: 1.05rem;
-  padding: 16px;
-  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  text-align: center;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.2);
 }
-
-.stat-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
+.offline-banner a { color: inherit; font-weight: 700; }
+@media (min-width: 761px) { .offline-banner { bottom: 24px; } }
+/* Encoche et barre d'état en mode plein écran. */
+.topbar { padding-top: env(safe-area-inset-top); }
+.topbar .inner, main > .container, .footer .container { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+@media (display-mode: standalone) {
+  /* Dans l'appli installée, le pied de page web n'a pas d'utilité sur téléphone. */
+  .footer { display: none; }
 }
-.stat {
-  background: var(--surface-2);
-  border-radius: 10px;
-  padding: 12px;
+@media (max-width: 760px) {
+  /* Pendant une séance, la barre du bas laisse la place aux réponses (mode concentration). */
+  body:has(.player-page) .bottomnav { display: none; }
+  body:has(.player-page) main { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+  .footer { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+  main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+  /* Cibles tactiles confortables et pas de zoom involontaire sur iOS (texte ≥ 16 px). */
+  input, select, textarea { font-size: 16px; }
+  .btn { min-height: 44px; }
 }
-.stat .label {
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-.stat .value {
-  font-size: 1.4rem;
-  font-weight: 800;
-}
-
-.task {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-}
-.task .meta {
-  color: var(--muted);
-  font-size: 0.875rem;
-}
-details summary {
-  cursor: pointer;
-  font-weight: 600;
-  min-height: 32px;
-}
-[dir="rtl"] {
-  text-align: right;
-}
-
-.kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; }
-.kv dt { color: var(--muted); }
-.kv dd { margin: 0; }
-
-/* Administration : usage surtout sur ordinateur, la navigation passe à la ligne plutôt que de défiler. */
-.topbar .inner.admin-inner { flex-wrap: wrap; padding-block: 6px; }
-.mainnav.adminnav { flex-wrap: wrap; overflow: visible; }
-.mainnav.adminnav a { padding: 6px 8px; }

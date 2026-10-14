@@ -10,6 +10,7 @@ import { addNoteAction, deleteNoteAction, startPracticeAction } from "@/app/acti
 import { Flashcards } from "./Flashcards";
 import { ReportButton } from "@/components/ReportButton";
 import { frDate } from "@/components/labels";
+import { DownloadLesson } from "@/components/OfflineButtons";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       {data.updatedSinceView && (
         <p className="notice warn" role="status">Ce cours a été mis à jour depuis ta dernière lecture (version {data.updatedSinceView} → {lesson.version}).</p>
       )}
+      <DownloadLesson url={`/apprendre/cours/${lessonId}`} title={lesson.title} />
       <section className="card flat">
         <h2>Objectifs</h2>
         <ul>{lesson.objectives.map((o) => <li key={o}>{o}</li>)}</ul>

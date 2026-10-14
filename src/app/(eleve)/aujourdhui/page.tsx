@@ -8,6 +8,7 @@ import { ActionForm, Submit } from "@/components/ActionForm";
 import { startTaskAction, startDiagnosticAction, deferDiagnosticAction } from "@/app/actions/student";
 import { TASK_LABELS, frDate } from "@/components/labels";
 import type { PlanTask } from "@/db/schema";
+import { InstallApp } from "@/components/InstallApp";
 
 export const metadata = { title: "Aujourd'hui" };
 export const dynamic = "force-dynamic";
@@ -139,6 +140,8 @@ export default async function Page() {
           </section>
         )
       )}
+
+      <InstallApp compact />
 
       <section className="grid">
         <div className="card flat">
