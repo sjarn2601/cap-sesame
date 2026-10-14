@@ -1,0 +1,35 @@
+# Mise en ligne sur Render (Blueprint) : un service web et une base PostgreSQL 16.
+# Render → New → Blueprint → choisir ce dépôt. Voir docs/mise-en-ligne.md.
+services:
+  - type: web
+    name: cap-sesame
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    # Les outils de build sont en devDependencies : on les installe malgré NODE_ENV=production.
+    buildCommand: npm ci --include=dev && npm run build
+    # Crée ou met à jour les tables, puis charge la démonstration si la base est vide.
+    startCommand: npm run db:deploy && npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cap-sesame-db
+          property: connectionString
+      # Mot de passe des comptes de démonstration, généré par Render (visible dans l'onglet Environment).
+      - key: DEMO_PASSWORD
+        generateValue: true
+      # Facultatif : active l'assistant IA. Sans clé, l'aide rédigée par l'équipe est servie.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+databases:
+  - name: cap-sesame-db
+    plan: free
+    region: frankfurt
+    postgresMajorVersion: "16"

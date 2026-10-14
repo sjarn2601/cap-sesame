@@ -34,6 +34,10 @@ Mot de passe commun : `demo-sesame-2027`.
 
 Les comptes du personnel exigent un second facteur (TOTP). En démonstration, tous partagent le secret `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP` ; `npm run totp` affiche le code courant. À remplacer avant toute mise en ligne.
 
+## Mise en ligne
+
+Voir [docs/mise-en-ligne.md](docs/mise-en-ligne.md) : un Blueprint Render (`render.yaml`) crée le site et la base. En production, `DEMO_PASSWORD` est obligatoire et le secret du second facteur est généré au premier démarrage.
+
 ## Tests
 
 ```bash
