@@ -5,6 +5,7 @@ import { adminDashboard } from "@/server/editorialAdmin";
 import { requireStaff } from "@/server/next";
 import { STATUS_LABELS, type ContentStatus } from "@/lib/editorial";
 import { frDateTime } from "@/components/labels";
+import { aiConfig, usageSummary } from "@/server/assistant";
 
 export const metadata = { title: "Administration" };
 export const dynamic = "force-dynamic";
@@ -12,6 +13,11 @@ export const dynamic = "force-dynamic";
 export default async function Page() {
   const actor = await requireStaff();
   const d = await adminDashboard(getDb(), actor);
+  const ai = await usageSummary(getDb(), 7);
+  const aiCfg = aiConfig();
+  const aiTotal = ai.reduce((t, r) => t + r.n, 0);
+  const aiFallbacks = ai.filter((r) => r.outcome !== "ai").reduce((t, r) => t + r.n, 0);
+  const aiCost = ai.reduce((t, r) => t + r.cost, 0) / 1_000_000;
   const pending = (d.statusCounts.draft ?? 0) + (d.statusCounts.in_review ?? 0) + (d.statusCounts.format_check ?? 0) + (d.statusCounts.validated ?? 0);
   return (
     <div className="stack">
@@ -57,6 +63,14 @@ export default async function Page() {
       <section className="card flat">
         <h2>Séances des 7 derniers jours</h2>
         <p>{Object.entries(d.attempts7).map(([k, n]) => `${KIND_LABELS[k] ?? k} : ${n}`).join(" · ") || "Aucune."}</p>
+      </section>
+
+      <section className="card flat">
+        <h2>Assistant IA (7 derniers jours)</h2>
+        <p>
+          {process.env.ANTHROPIC_API_KEY ? "Activé" : "Non activé (aide éditoriale seulement)"} · {aiTotal} demande(s), dont {aiFallbacks} servie(s) par l&apos;aide éditoriale · coût {aiCost.toFixed(2)} $
+        </p>
+        <p className="small muted">Limites : {aiCfg.dailyRequests} demandes par élève et par jour, budget {aiCfg.dailyBudgetUsd} $ par jour, délai {aiCfg.timeoutMs / 1000} s. Le contenu des échanges n&apos;est pas conservé.</p>
       </section>
 
       <section className="card flat">

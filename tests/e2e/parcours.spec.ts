@@ -85,6 +85,7 @@ test("concours blanc strict : aucun corrigé envoyé avant la fin", async ({ pag
   await register(page);
   await launchExam(page, "Mathématiques", "strict");
   await expect(page.getByRole("timer")).toBeVisible();
+  await expect(page.getByTestId("assistant")).toHaveCount(0);
   const id = page.url().split("/seance/")[1];
   const body = await page.evaluate(async (a) => (await fetch(`/api/attempts/${a}`)).text(), id);
   expect(body).not.toMatch(/justification|"explanation"|"correct":true/);
@@ -134,4 +135,16 @@ test("administration : connexion avec code à usage unique et écrans principaux
   await page.getByRole("button", { name: "Validation à blanc" }).click();
   await expect(page.getByText("Rien n'a été écrit")).toBeVisible();
   await expect(page.locator("textarea")).toHaveValue('[{"questionId":"X"}]');
+});
+
+test("assistant encadré : indice gradué avec appuis, repli éditorial sans clé @mobile", async ({ page }) => {
+  await register(page);
+  await page.goto("/entrainement");
+  await page.locator("form button.btn.primary").first().click();
+  await page.waitForURL(/seance\//);
+  await page.getByRole("button", { name: "Aide de l'assistant" }).click();
+  await page.getByRole("button", { name: "Assistant : indice" }).click();
+  await expect(page.getByText(/Aide rédigée par l.équipe|Réponse de l.assistant/)).toBeVisible();
+  await expect(page.getByText(/^Appuis : Question .+ version \d+/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Assistant : démarche" })).toBeVisible();
 });

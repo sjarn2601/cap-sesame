@@ -851,3 +851,6 @@ table.data th {
   input, select, textarea { font-size: 16px; }
   .btn { min-height: 44px; }
 }
+
+/* Assistant encadré */
+.assistant-answer { border-left: 3px solid var(--accent); padding: 8px 12px; background: var(--surface-2); border-radius: 6px; }

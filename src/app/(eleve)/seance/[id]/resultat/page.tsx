@@ -7,6 +7,7 @@ import { AppError } from "@/server/errors";
 import { KIND_LABELS } from "@/server/progress";
 import { getReviewLog } from "@/server/reviewLog";
 import { DocumentPane } from "@/components/DocumentPane";
+import { AssistantPanel } from "@/components/AssistantPanel";
 import { STATUS_TEXT } from "@/components/QuestionView";
 import { frDate, frDateTime } from "@/components/labels";
 import { toTwenty } from "@/lib/scoring";
@@ -158,6 +159,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               <p className="rule">À retenir : {i.rule}</p>
               <Link className="small" href={`/apprendre/cours/L-${i.skillIds[0]}${i.lessonAnchor ? `#${i.lessonAnchor}` : ""}`}>Revoir le passage du cours</Link>
             </div>
+            {!i.withdrawn && <AssistantPanel kind="question" attemptId={id} questionVersionId={i.id} phase="explain" />}
           </article>
         ))}
       </section>

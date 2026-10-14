@@ -32,6 +32,8 @@ export type AttemptMeta = {
   advanced?: boolean;
   /** Série téléchargée pour être faite hors connexion (OFF-01). */
   offline?: boolean;
+  /** Niveau d'aide de l'assistant demandé par question (1 indice, 2 démarche, 3 solution) : la réponse compte comme aidée. */
+  aiHelp?: Record<string, number>;
 };
 
 const LEARNING_KINDS: AttemptKind[] = ["practice", "review", "diagnostic"];
@@ -42,7 +44,7 @@ export type SessionSize = keyof typeof SIZES;
 const meta = (a: Attempt) => a.meta as AttemptMeta;
 const student = (actor: Actor | null) => assertRole(actor, ["student"]);
 
-async function loadOwned(db: DB, actor: Actor, id: string) {
+export async function loadOwned(db: DB, actor: Actor, id: string) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) throw notFound("Tentative");
   const a = await db.query.attempts.findFirst({ where: eq(attempts.id, id) });
   // Un identifiant trouvé dans une URL ne donne aucun droit : même réponse que si la tentative n'existait pas.
@@ -405,7 +407,7 @@ export async function saveResponse(db: DB, actorIn: Actor | null, id: string, in
     receivedAt: now,
     durationMs: Math.max(0, Math.min(input.durationMs ?? 0, 4 * 3_600_000)),
     confidence: input.confidence ?? null,
-    hintsUsed: m.hints?.[qv.id] ?? 0,
+    hintsUsed: Math.max(m.hints?.[qv.id] ?? 0, m.aiHelp?.[qv.id] ?? 0),
     isCorrect: score.isCorrect,
     points: score.points,
     maxPoints: score.maxPoints,

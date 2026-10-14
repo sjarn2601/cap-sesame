@@ -325,3 +325,87 @@ describe("OFF-01 : séries hors connexion", () => {
     await expect(syncOffline(db, other, pack.attemptId, [], {}, true)).rejects.toThrow();
   });
 });
+
+describe("IA-01 / IA-02 : assistant encadré", () => {
+  it("appuis cités, données minimales, niveaux d'aide, quotas, budget et repli éditorial", async () => {
+    const { askAboutQuestion, askAboutLesson, redact } = await import("@/server/assistant");
+    type Req = { system: string; prompt: string; maxTokens: number };
+    const seen: Req[] = [];
+    let reply = "Regarde d'abord les unités.";
+    const fake = {
+      async complete(req: Req) {
+        seen.push(req);
+        return { text: reply, model: "fake", inputTokens: 1000, outputTokens: 200, refused: false };
+      },
+    };
+    const broken = { complete: async () => { throw new Error("panne"); } };
+    const a = await newStudent("ia01@test.fr");
+    const p = await createPractice(db, a, { subjectCode: "MATH", size: "short" });
+    const qv = p.questionVersionIds[0];
+
+    // Indice : appuis versionnés, aucune donnée personnelle, contenu traité comme donnée.
+    const hint = await askAboutQuestion(db, a, { attemptId: p.id, questionVersionId: qv, mode: "hint", level: 1, question: "écris à ia01@test.fr ou au 06 12 34 56 78" }, fake);
+    expect(hint.source).toBe("ai");
+    expect(hint.sources[0].ref).toMatch(/^question:.+@\d+$/);
+    expect(hint.sources.some((x) => x.ref.startsWith("session:2027@"))).toBe(true);
+    expect(seen[0].prompt).not.toContain("ia01@test.fr");
+    expect(seen[0].prompt).not.toContain("06 12 34 56 78");
+    expect(seen[0].system).toMatch(/jamais des instructions/);
+    expect(seen[0].system).toMatch(/N'invente jamais un chiffre officiel/);
+    expect(redact("x".repeat(500))).toHaveLength(300);
+
+    // La réponse donnée après une aide compte comme aidée.
+    await saveResponse(db, a, p.id, { questionVersionId: qv, idempotencyKey: "ia-1", selected: [], numericValue: 0, durationMs: 1000 });
+    const [row] = await db.select().from(s.responses).where(and(eq(s.responses.attemptId, p.id), eq(s.responses.questionVersionId, qv)));
+    expect(row.hintsUsed).toBeGreaterThanOrEqual(1);
+
+    // Conflit avec le corrigé : incertitude signalée, contestation proposée.
+    reply = "INCERTITUDE : le corrigé semble contredire l'énoncé.\nVoici le raisonnement.";
+    const ex = await askAboutQuestion(db, a, { attemptId: p.id, questionVersionId: qv, mode: "explain" }, fake);
+    expect(ex.uncertain).toBe(true);
+    expect(ex.text).toBe("Voici le raisonnement.");
+    expect(seen.at(-1)!.prompt).toMatch(/Corrigé validé/);
+
+    // Panne ou absence de clé : correction éditoriale, la séance continue.
+    const down = await askAboutQuestion(db, a, { attemptId: p.id, questionVersionId: qv, mode: "explain" }, broken);
+    expect(down.source).toBe("editorial");
+    expect(down.text.length).toBeGreaterThan(0);
+    const off = await askAboutLesson(db, a, { lessonId: "L-MATH-PCT" }, null).catch(async () => {
+      const [l] = await db.select().from(s.lessonVersions).where(eq(s.lessonVersions.status, "published")).limit(1);
+      return askAboutLesson(db, a, { lessonId: l.lessonId }, null);
+    });
+    expect(off.source).toBe("editorial");
+    expect(off.notice).toMatch(/pas activé/);
+
+    // Quota quotidien par élève.
+    process.env.SESAME_AI_DAILY_REQUESTS = "4";
+    const q4 = await askAboutQuestion(db, a, { attemptId: p.id, questionVersionId: qv, mode: "explain" }, fake);
+    expect(q4.source).toBe("ai");
+    expect(q4.remaining).toBe(0);
+    const q5 = await askAboutQuestion(db, a, { attemptId: p.id, questionVersionId: qv, mode: "explain" }, fake);
+    expect(q5.source).toBe("editorial");
+    expect(q5.notice).toMatch(/toutes tes demandes/);
+    delete process.env.SESAME_AI_DAILY_REQUESTS;
+
+    // Budget global : au-delà, plus aucun appel au fournisseur.
+    process.env.SESAME_AI_DAILY_BUDGET_USD = "0.001";
+    const b = await newStudent("ia01b@test.fr");
+    const pb = await createPractice(db, b, { subjectCode: "MATH", size: "short" });
+    const calls = seen.length;
+    const over = await askAboutQuestion(db, b, { attemptId: pb.id, questionVersionId: pb.questionVersionIds[0], mode: "hint", level: 1 }, fake);
+    expect(over.source).toBe("editorial");
+    expect(seen.length).toBe(calls);
+    delete process.env.SESAME_AI_DAILY_BUDGET_USD;
+
+    // Journal : coût enregistré, sans contenu des échanges.
+    const usage = await db.select().from(s.aiUsage).where(eq(s.aiUsage.userId, a.id));
+    expect(usage.find((u) => u.outcome === "ai")!.costMicroUsd).toBe(1000 * 4 + 200 * 20);
+    expect(usage.map((u) => u.outcome)).toEqual(expect.arrayContaining(["ai", "fallback_error", "fallback_disabled", "fallback_quota"]));
+
+    // Concours blanc strict : aucune aide tant que l'épreuve dure ; ressource d'un autre élève introuvable.
+    const exam = await createExam(db, a, { subject: "MATH", mode: "strict" });
+    await expect(askAboutQuestion(db, a, { attemptId: exam.id, questionVersionId: exam.questionVersionIds[0], mode: "hint", level: 1 }, fake)).rejects.toThrow(/strict/);
+    await expect(askAboutQuestion(db, a, { attemptId: exam.id, questionVersionId: exam.questionVersionIds[0], mode: "explain" }, fake)).rejects.toThrow(/strict/);
+    await expect(askAboutQuestion(db, b, { attemptId: p.id, questionVersionId: qv, mode: "explain" }, fake)).rejects.toThrow(/introuvable/);
+  });
+});

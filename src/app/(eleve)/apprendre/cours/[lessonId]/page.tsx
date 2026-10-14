@@ -11,6 +11,7 @@ import { Flashcards } from "./Flashcards";
 import { ReportButton } from "@/components/ReportButton";
 import { frDate } from "@/components/labels";
 import { DownloadLesson } from "@/components/OfflineButtons";
+import { AssistantPanel } from "@/components/AssistantPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +57,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           )}
         </section>
       ))}
+      <AssistantPanel kind="lesson" lessonId={lessonId} sections={lesson.sections.map((s) => ({ anchor: s.anchor, title: s.title }))} />
       {lesson.flashcards.length > 0 && (
         <section className="card flat stack">
           <h2>Cartes mémoire</h2>

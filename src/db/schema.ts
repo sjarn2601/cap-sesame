@@ -516,3 +516,25 @@ export const deletionRequests = pgTable("deletion_requests", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   closedAt: timestamp("closed_at", { withTimezone: true }),
 });
+
+// ---------- Assistant IA (IA-01, IA-02) ----------
+
+/** Journal d'usage de l'assistant : quotas par élève, plafond de coût global, taux d'échec. Aucun contenu personnel stocké. */
+export const aiUsage = pgTable(
+  "ai_usage",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    day: date("day").notNull(),
+    mode: text("mode").notNull(),
+    outcome: text("outcome").notNull(), // ai | fallback_error | fallback_timeout | fallback_refusal | fallback_quota | fallback_budget | fallback_disabled
+    model: text("model"),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    costMicroUsd: integer("cost_micro_usd").notNull().default(0),
+    latencyMs: integer("latency_ms").notNull().default(0),
+    contentRef: text("content_ref"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("ai_usage_day_idx").on(t.day), index("ai_usage_user_day_idx").on(t.userId, t.day)],
+);
