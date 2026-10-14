@@ -2,15 +2,18 @@ import { chromium } from "@playwright/test";
 import { execSync, spawn } from "node:child_process";
 const stopServer = () => { try { execSync('pkill -f "[n]ext-server"'); } catch {} };
 const startServer = async () => { spawn("npx", ["next", "start", "-p", "3100"], { cwd: "/home/claude/sesame", detached: true, stdio: "ignore" }).unref(); for (let i = 0; i < 40; i++) { try { const r = await fetch("http://localhost:3100/api/health"); if (r.ok) return; } catch {} await new Promise((r) => setTimeout(r, 500)); } };
-const S = "/tmp/claude-0/-home-claude/da2c50ed-b5ef-5c2e-b8cf-3644250cd58c/scratchpad/shots/";
+// Vérification manuelle du mode hors connexion sur la version de production :
+//   npm run build && npx next start -p 3100   puis   node scripts/check-offline.mjs
+// Le script arrête réellement le serveur pour simuler la coupure, puis le relance.
+const S = process.env.SHOTS_DIR ? process.env.SHOTS_DIR.replace(/\/?$/, "/") : null;
 const B = "http://localhost:3100";
-const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium" });
+const browser = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_PATH ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH } : {});
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 const page = await ctx.newPage();
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
 page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
-const step = async (n, f) => { try { await f(); await page.screenshot({ path: S + n + ".png", fullPage: false }); console.log("OK", n, page.url()); } catch (e) { console.log("FAIL", n, page.url(), e.message.split("\n")[0]); await page.screenshot({ path: S + n + "-fail.png" }).catch(() => {}); } };
+const step = async (n, f) => { try { await f(); if (S) await page.screenshot({ path: S + n + ".png" }); console.log("OK", n, page.url()); } catch (e) { console.log("FAIL", n, page.url(), e.message.split("\n")[0]); if (S) await page.screenshot({ path: S + n + "-fail.png" }).catch(() => {}); } };
 await step("o1-register", async () => {
   await page.goto(B + "/inscription");
   await page.fill("#email", `off${Date.now()}@test.fr`);
