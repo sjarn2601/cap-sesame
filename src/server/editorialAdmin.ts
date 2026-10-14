@@ -23,6 +23,7 @@ import { scoreQuestion, type ScoringRule } from "@/lib/scoring";
 import { assertRole, type Actor } from "./auth";
 import { AppError, badRequest, notFound } from "./errors";
 import { audit } from "./audit";
+import { retireOtherNewsVersions } from "./news";
 import { recomputeMastery } from "./learning";
 
 const STAFF = ["author", "reviewer", "admin"] as const;
@@ -127,6 +128,7 @@ export async function transitionContent(db: DB, actorIn: Actor | null, type: Con
   await db.update(t).set(set).where(eq(t.id, id));
   await db.insert(editorialEvents).values({ contentType: type, contentVersionId: id, fromStatus: row.status, toStatus: to, actorId: actor.id, reason: reason ?? null });
   await audit(db, actor.id, `content.${to}`, { type, id }, { from: row.status, reason });
+  if (type === "news" && to === "published") await retireOtherNewsVersions(db, actor.id, row as typeof newsItems.$inferSelect);
   return to;
 }
 

@@ -318,6 +318,10 @@ export const newsItems = pgTable("news_items", {
   claims: jsonb("claims").$type<{ kind: "fact" | "statement" | "interpretation" | "uncertain"; text: string }[]>().notNull().default([]),
   sources: jsonb("sources").$type<{ label: string; url: string }[]>().notNull(),
   lastVerifiedAt: date("last_verified_at").notNull(),
+  /** Identifiant stable d'une fiche à travers ses versions ; les questions liées le citent comme « news:<slug> ». */
+  slug: text("slug"),
+  zone: text("zone").notNull().default("Monde"),
+  viewpoints: jsonb("viewpoints").$type<{ actor: string; position: string; source: { label: string; url: string } }[]>().notNull().default([]),
   ...editorial,
 });
 

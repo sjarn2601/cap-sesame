@@ -537,3 +537,45 @@ describe("REV-02 : cartes personnelles et fiches", () => {
     expect((await exportData(db, a)).personalCards).toHaveLength(1);
   });
 });
+
+describe("ACT-02 : actualité enrichie", () => {
+  it("correction factuelle : questions liées suspendues, ancienne version retirée à la publication, quiz sans l'information corrigée", async () => {
+    const { correctNewsFact, createWeeklyQuiz } = await import("@/server/news");
+    const { transitionContent } = await import("@/server/editorialAdmin");
+    const author = await staff("auteur@demo.cap-sesame.fr");
+    const reviewer = await staff("relecteur@demo.cap-sesame.fr");
+    const [paris] = await db.select().from(s.newsItems).where(and(eq(s.newsItems.slug, "accord-paris"), eq(s.newsItems.status, "published")));
+    expect(paris.sources.length).toBeGreaterThan(0);
+    expect(paris.viewpoints.length).toBeGreaterThan(0);
+
+    const a = await newStudent("act02@test.fr");
+    const before = await createWeeklyQuiz(db, a);
+    const linkedQ = (await db.select().from(s.questionVersions).where(sql`${s.questionVersions.references} @> '["news:accord-paris"]'::jsonb`))[0];
+    expect(before.questionVersionIds).toContain(linkedQ.id);
+    expect((before.meta as { reasons: Record<string, string> }).reasons[linkedQ.id]).toMatch(/accord de Paris/);
+
+    await expect(correctNewsFact(db, author, paris.id, { summary: "x" }, "")).rejects.toThrow(/source/);
+    const r = await correctNewsFact(db, author, paris.id, { summary: "Résumé corrigé." }, "Précision de la date d'entrée en vigueur (CCNUCC)");
+    expect(r.suspendedQuestions.map((q) => q.id)).toContain(linkedQ.id);
+    const q = await db.query.questionVersions.findFirst({ where: eq(s.questionVersions.id, linkedQ.id) });
+    expect(q!.status).toBe("suspended");
+    const old = await db.query.newsItems.findFirst({ where: eq(s.newsItems.id, paris.id) });
+    expect(old!.status).toBe("suspended");
+    expect(r.draft.version).toBe(paris.version + 1);
+
+    // La question suspendue ne revient pas dans une nouvelle série.
+    const after = await createWeeklyQuiz(db, a);
+    expect(after.questionVersionIds).not.toContain(linkedQ.id);
+
+    // Relecture par une autre personne puis publication : l'ancienne version est retirée.
+    await transitionContent(db, author, "news", r.draft.id, "in_review");
+    await transitionContent(db, reviewer, "news", r.draft.id, "format_check");
+    await transitionContent(db, reviewer, "news", r.draft.id, "validated");
+    await transitionContent(db, reviewer, "news", r.draft.id, "published");
+    const old2 = await db.query.newsItems.findFirst({ where: eq(s.newsItems.id, paris.id) });
+    expect(old2!.status).toBe("retired");
+    // La question reste suspendue tant qu'un relecteur ne l'a pas revue.
+    expect((await db.query.questionVersions.findFirst({ where: eq(s.questionVersions.id, linkedQ.id) }))!.status).toBe("suspended");
+    await transitionContent(db, reviewer, "question", linkedQ.id, "published");
+  });
+});

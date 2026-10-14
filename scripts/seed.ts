@@ -6,7 +6,7 @@ import * as s from "@/db/schema";
 import { hashPassword } from "@/lib/password";
 import { qualityChecks } from "@/lib/editorial";
 import { DEMO_QUESTIONS } from "@/content/demo-questions";
-import { SUBJECTS, SKILLS, LESSONS, lessonSections, DOCUMENT_SET, NEWS, SESSION_2027, PROGRAM_SHEETS } from "@/content/demo-catalog";
+import { SUBJECTS, SKILLS, LESSONS, lessonSections, DOCUMENT_SET, NEWS, SESSION_2027, PROGRAM_SHEETS, NEWS_EXTRA } from "@/content/demo-catalog";
 
 export const DEMO_TOTP_SECRET = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP";
 export const DEMO_PASSWORD = "demo-sesame-2027";
@@ -138,7 +138,7 @@ export async function seed(db = getDb()) {
   ]);
 
   for (const n of NEWS) {
-    await db.insert(s.newsItems).values({ ...n, lastVerifiedAt: "2026-10-14", ...published });
+    await db.insert(s.newsItems).values({ ...n, ...NEWS_EXTRA[n.title], lastVerifiedAt: "2026-10-14", ...published });
   }
 
   for (const sh of PROGRAM_SHEETS) await db.insert(s.programSheets).values({ ...sh, lastVerifiedAt: "2026-10-14", ...published });

@@ -253,3 +253,26 @@ export const PARCOURS_QUESTIONS: Record<string, string> = {
   interet: "Quel sujet te passionne en dehors des cours ? Qu'est-ce que cela dit de toi ?",
   projet: "Où te vois-tu dans cinq ans, et quelles étapes as-tu prévues ?",
 };
+
+// ---------- Actualité enrichie (ACT-02) ----------
+const UNFCCC = { label: "CCNUCC, l'accord de Paris", url: "https://unfccc.int/fr/a-propos-des-ndcs/l-accord-de-paris" };
+const CONSILIUM = { label: "Conseil de l'Union européenne", url: "https://www.consilium.europa.eu/fr/" };
+export const NEWS_EXTRA: Record<string, { slug: string; zone: string; viewpoints: { actor: string; position: string; source: { label: string; url: string } }[] }> = {
+  "Adoption de l'accord de Paris sur le climat": {
+    slug: "accord-paris",
+    zone: "Monde",
+    viewpoints: [
+      { actor: "Petits États insulaires", position: "Ont défendu la mention de l'objectif de 1,5 °C, jugé vital face à la montée des eaux.", source: UNFCCC },
+      { actor: "Grands pays émetteurs", position: "Ont privilégié des contributions fixées par chaque pays plutôt que des objectifs imposés.", source: UNFCCC },
+    ],
+  },
+  "Sortie du Royaume-Uni de l'Union européenne": {
+    slug: "brexit",
+    zone: "Europe",
+    viewpoints: [
+      { actor: "Gouvernement britannique", position: "Présente le retrait comme la reprise du contrôle des lois, des frontières et de la politique commerciale.", source: CONSILIUM },
+      { actor: "Union européenne", position: "Insiste sur l'intégrité du marché unique et sur l'absence de frontière physique en Irlande.", source: CONSILIUM },
+    ],
+  },
+  "Élections européennes de juin 2024": { slug: "europeennes-2024", zone: "Europe", viewpoints: [] },
+};
