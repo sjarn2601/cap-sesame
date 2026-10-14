@@ -410,6 +410,11 @@ export const masterySnapshots = pgTable(
     families: integer("families").notNull(),
     distinctDays: integer("distinct_days").notNull(),
     weightsVersion: text("weights_version").notNull(),
+    // Estimation probabiliste expérimentale (ADA-02), gardée à côté pour comparaison.
+    probMean: real("prob_mean"),
+    probLow: real("prob_low"),
+    probHigh: real("prob_high"),
+    probStatus: text("prob_status"),
     computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.skillId] })],
@@ -589,3 +594,11 @@ export const oralSessions = pgTable(
   },
   (t) => [index("oral_sessions_user_idx").on(t.userId)],
 );
+
+/** Réglages applicatifs modifiables par l'administration (journalisés). */
+export const appSettings = pgTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+  updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

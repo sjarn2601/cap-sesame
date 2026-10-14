@@ -2,6 +2,7 @@
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import type { DB } from "@/db";
 import { attempts, masterySnapshots, questionVersions, responses, reviewItems, scoreVersions, skills, subjects } from "@/db/schema";
+import { estimateSkill } from "@/lib/estimation";
 import { computeMastery, MASTERY_LABELS, type MasteryStatus } from "@/lib/mastery";
 import { assertRole, type Actor } from "./auth";
 import { notFound } from "./errors";
@@ -116,10 +117,12 @@ export async function skillDrilldown(db: DB, actorIn: Actor | null, skillId: str
     .where(and(eq(attempts.userId, actor.id), sql`${questionVersions.skillIds} @> ${JSON.stringify([skillId])}::jsonb`))
     .orderBy(desc(responses.receivedAt));
   const counted = rows.filter((x) => x.r.isCorrect !== null && x.a.status !== "invalidated" && x.q.status !== "suspended" && x.q.status !== "retired");
-  const m = computeMastery(counted.map((x) => ({ at: x.r.receivedAt, correct: !!x.r.isCorrect, autonomous: x.r.hintsUsed === 0 && x.a.kind !== "exam_pedagogic", familyId: x.q.familyId })));
+  const events = counted.map((x) => ({ at: x.r.receivedAt, correct: !!x.r.isCorrect, autonomous: x.r.hintsUsed === 0 && x.a.kind !== "exam_pedagogic", familyId: x.q.familyId, difficulty: x.q.difficulty }));
+  const m = computeMastery(events);
   return {
     skill,
     mastery: m,
+    estimate: estimateSkill(events),
     responses: rows.map((x) => ({
       attemptId: x.a.id,
       kind: x.a.kind,

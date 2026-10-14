@@ -477,3 +477,31 @@ describe("ORA-01 : oraux", () => {
     expect(await oral.getDossier(db, a)).toHaveLength(1);
   });
 });
+
+describe("ADA-02 : comparaison et retour arrière", () => {
+  it("les deux estimations sont stockées ; seul un administrateur change le système, de façon journalisée", async () => {
+    const { estimationReport, setEstimationMode, getEstimationMode } = await import("@/server/estimation");
+    const a = await newStudent("ada02@test.fr");
+    const p = await createPractice(db, a, { subjectCode: "MATH", size: "short" });
+    await answerAll(a, p.id, true);
+    await finalizeAttempt(db, a, p.id);
+    const snaps = await db.select().from(s.masterySnapshots).where(eq(s.masterySnapshots.userId, a.id));
+    expect(snaps.length).toBeGreaterThan(0);
+    expect(snaps.every((x) => x.probStatus !== null)).toBe(true);
+
+    const admin = await staff("admin@demo.cap-sesame.fr");
+    const author = await staff("auteur@demo.cap-sesame.fr");
+    expect(await getEstimationMode(db)).toBe("simple");
+    await expect(setEstimationMode(db, author, "probabilistic")).rejects.toThrow();
+    await setEstimationMode(db, admin, "probabilistic");
+    expect(await getEstimationMode(db)).toBe("probabilistic");
+    const next = await createPractice(db, a, { subjectCode: "MATH", size: "short" });
+    expect(next.questionVersionIds.length).toBe(5);
+    await setEstimationMode(db, admin, "simple");
+    const report = await estimationReport(db, admin);
+    expect(report.mode).toBe("simple");
+    expect(report.snapshots).toBeGreaterThan(0);
+    const logs = await db.select().from(s.auditEvents).where(eq(s.auditEvents.action, "settings.estimation_mode"));
+    expect(logs).toHaveLength(2);
+  });
+});

@@ -9,6 +9,7 @@ const LINKS = [
   ["/admin/import", "Import par lots"],
   ["/admin/signalements", "Signalements"],
   ["/admin/sessions", "Sessions"],
+  ["/admin/estimation", "Estimation"],
   ["/admin/support", "Support"],
 ];
 

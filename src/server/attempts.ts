@@ -8,6 +8,7 @@ import { pickDueReviews } from "@/lib/spaced";
 import { assertRole, type Actor } from "./auth";
 import { AppError, badRequest, conflict, notFound } from "./errors";
 import { applyToReviewLog, masteryMap, questionsByIds, recomputeMastery, seenQuestionIds } from "./learning";
+import { getEstimationMode, selectionScore } from "./estimation";
 import { getPublishedConfig } from "./sessionConfig";
 import { markPlanTaskDone } from "./plan";
 
@@ -97,7 +98,8 @@ export async function createPractice(db: DB, actorIn: Actor | null, opts: { subj
   if (pool.length === 0) throw new AppError("no_content", 404, "Aucune question publiée pour cette sélection pour l'instant. Choisis une autre notion ou une autre matière.");
   const { seen, families } = await seenQuestionIds(db, actor.id);
   const mastery = await masteryMap(db, actor.id);
-  const skillScore = new Map<string, number | null>([...mastery.entries()].map(([k, v]) => [k, v.status === "insufficient" && v.autonomousAttempts < 3 ? null : v.score]));
+  const mode = await getEstimationMode(db);
+  const skillScore = new Map<string, number | null>([...mastery.entries()].map(([k, v]) => [k, selectionScore(mode, v)]));
   const selected = selectQuestions(pool.map(toCandidate), { seenQuestions: seen, seenFamilies: families, skillScore, targetSkill: opts.skillId, now: new Date() }, SIZES[opts.size ?? "normal"]);
   const reasons = Object.fromEntries(selected.map((s) => [s.id, s.reason]));
   const [a] = await db

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getDb } from "@/db";
 import { applyBatch, cancelBatch, createQuestionDraft, dryRunBatch, neutralizeQuestion, resolveReport, supportLookup, transitionContent, type BatchReport } from "@/server/editorialAdmin";
 import { approveConfig, createDraft } from "@/server/sessionConfig";
+import { setEstimationMode, type EstimationMode } from "@/server/estimation";
 import { attempt, getActor } from "@/server/next";
 import type { ContentStatus } from "@/lib/editorial";
 
@@ -102,4 +103,11 @@ export async function supportLookupAction(_: SupportState, form: FormData): Prom
   const r = await attempt(async () => supportLookup(getDb(), await getActor(), String(form.get("attemptId") ?? "").trim()));
   if (!r.ok) return { message: r.message };
   return { result: r.data };
+}
+
+export async function estimationModeAction(_: AdminState, form: FormData): Promise<AdminState> {
+  const r = await attempt(async () => setEstimationMode(getDb(), await getActor(), String(form.get("mode")) as EstimationMode));
+  if (!r.ok) return { message: r.message };
+  revalidatePath("/admin/estimation");
+  return { ok: true, message: r.data === "simple" ? "Système simple rétabli." : "Estimation probabiliste activée." };
 }

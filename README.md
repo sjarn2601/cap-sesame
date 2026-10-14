@@ -93,6 +93,7 @@ Principes :
 | TEC-01 | Web responsive, utilisable à 360 px |
 | OFF-01 hors connexion (lot B) | Fait : appli installable, cours et séries libres téléchargés explicitement, réponses synchronisées sans doublon, données effacées à la déconnexion |
 | IA-01, IA-02 assistant encadré (lot B) | Fait : indice, démarche, solution expliquée ; explication de correction ; reformulation de cours ; appuis versionnés affichés ; quotas, budget, délai et repli éditorial ; rien en concours strict |
+| ADA-02 estimation probabiliste (lot B) | Fait : modèle bêta-binomial pondéré par la difficulté, calculé à côté du système simple, intervalle affiché à l'élève comme expérimental ; comparaison et analyse de difficulté sur `/admin/estimation` ; bascule réversible et journalisée (système simple par défaut) |
 | ORA-01 oraux (lot B) | Fait : fiches par école, programme, campus et session (démonstration : écoles fictives) ; dossier personnel ; simulations écrites ou dictées (micro sur accord, aucun audio conservé), transcription modifiable et supprimable ; retour sur six critères avec citations des réponses |
 | P1 et P2 restants (collectif, projection pondérée…) | Voir la suite du lot B. |
 
