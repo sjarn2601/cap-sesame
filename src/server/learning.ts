@@ -39,7 +39,8 @@ export async function recomputeMastery(db: DB, userId: string, skillIds: string[
     const values = {
       userId,
       skillId,
-      score: m.score ?? 0,
+      // Données insuffisantes : on garde le taux observé, jamais présenté comme un score.
+      score: m.score ?? m.observedRate ?? 0,
       status: m.status,
       autonomousAttempts: m.autonomousAttempts,
       families: m.families,

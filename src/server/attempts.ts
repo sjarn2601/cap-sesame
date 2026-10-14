@@ -565,6 +565,7 @@ export async function getAttemptView(db: DB, actorIn: Actor | null, id: string) 
       hints: a.kind === "exam_strict" ? [] : q.hints.slice(0, m.hints?.[q.id] ?? 0),
       documentSetVersionId: q.documentSetVersionId,
       reason: m.reasons?.[q.id] ?? null,
+      lessonId: `L-${q.skillIds[0]}`,
       section: m.sections?.findIndex((s) => s.questionVersionIds.includes(qid)) ?? 0,
       response: r ? { selected: r.selected, numericValue: r.numericValue, confidence: r.confidence } : null,
       correction: (answeredLearning || (a.kind === "exam_pedagogic" && !!r)) && showCorrections ? correctionOf(q, scoreQuestion(q, { selected: r!.selected, numericValue: r!.numericValue }, rule)) : null,
@@ -671,4 +672,17 @@ export async function listAttempts(db: DB, actorIn: Actor | null, limit = 50) {
   const latest = new Map<string, (typeof scores)[number]>();
   for (const s of scores) if (!latest.has(s.attemptId) || latest.get(s.attemptId)!.version < s.version) latest.set(s.attemptId, s);
   return rows.map((r) => ({ ...r, title: meta(r).title ?? "Séance", score: latest.get(r.id) ?? null }));
+}
+
+export async function inProgressAttempts(db: DB, actorIn: Actor | null) {
+  const actor = student(actorIn);
+  const rows = await db.select().from(attempts).where(and(eq(attempts.userId, actor.id), eq(attempts.status, "in_progress"))).orderBy(desc(attempts.startedAt)).limit(5);
+  const fresh: Attempt[] = [];
+  for (const r of rows) {
+    const a = await enforceTime(db, r);
+    if (a.status === "in_progress") fresh.push(a);
+  }
+  const counts = fresh.length ? await db.select({ attemptId: responses.attemptId, n: sql<number>`count(*)::int` }).from(responses).where(inArray(responses.attemptId, fresh.map((a) => a.id))).groupBy(responses.attemptId) : [];
+  const byId = new Map(counts.map((c) => [c.attemptId, c.n]));
+  return fresh.map((a) => ({ id: a.id, kind: a.kind, title: meta(a).title ?? "Séance", answered: byId.get(a.id) ?? 0, total: a.questionVersionIds.length, startedAt: a.startedAt }));
 }

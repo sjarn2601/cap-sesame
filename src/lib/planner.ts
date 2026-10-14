@@ -44,7 +44,12 @@ export function dayMinutes(input: Pick<PlannerInput, "availability" | "rhythm" |
 }
 
 function priorityRank(m: Mastery | undefined) {
-  if (!m || m.score === null) return 0.45; // inconnu : à évaluer, priorité moyenne-haute
+  if (!m || m.score === null) {
+    // Inconnu : à évaluer, priorité moyenne-haute. Les premières réponses (diagnostic) déplacent un peu ce rang.
+    const n = m?.autonomousAttempts ?? 0;
+    if (m?.observedRate == null || n === 0) return 0.45;
+    return (0.45 * 2 + m.observedRate * n) / (2 + n);
+  }
   return m.score;
 }
 
@@ -144,7 +149,7 @@ export function buildPlan(input: PlannerInput): PlannerResult {
           minutes,
           minMinutes: MIN_SLOT,
           bucket: "priority",
-          reason: m?.status === "fragile" ? `${s.name} : notion fragile (${Math.round((m.score ?? 0) * 100)} %).` : m?.score == null ? `${s.name} : encore peu de données, à évaluer.` : `${s.name} : à renforcer.`,
+          reason: m?.status === "fragile" ? `${s.name} : notion fragile (${Math.round((m.score ?? 0) * 100)} %).` : m?.score == null && m?.observedRate != null && m.observedRate < 0.5 ? `${s.name} : premières réponses à revoir (${Math.round(m.observedRate * m.autonomousAttempts)}/${m.autonomousAttempts}).` : m?.score == null ? `${s.name} : encore peu de données, à évaluer.` : `${s.name} : à renforcer.`,
         });
       } else {
         const s = consolidation[cIdx++ % consolidation.length];

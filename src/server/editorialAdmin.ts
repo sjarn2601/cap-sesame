@@ -298,3 +298,27 @@ export async function adminDashboard(db: DB, actorIn: Actor | null) {
     recentAudit,
   };
 }
+
+/** Vue support limitée : un identifiant de tentative, sans profil ni contenu personnel ; chaque accès est journalisé. */
+export async function supportLookup(db: DB, actorIn: Actor | null, attemptId: string) {
+  const actor = assertRole(actorIn, ["support", "admin"]);
+  if (!/^[0-9a-f-]{36}$/i.test(attemptId)) throw badRequest("Identifiant de tentative invalide.");
+  const a = await db.query.attempts.findFirst({ where: eq(attempts.id, attemptId) });
+  if (!a) throw notFound("Tentative");
+  const resp = await db.select({ receivedAt: responses.receivedAt, syncState: responses.syncState, clientSeq: responses.clientSeq }).from(responses).where(eq(responses.attemptId, attemptId));
+  const scores = await db.select().from(scoreVersions).where(eq(scoreVersions.attemptId, attemptId)).orderBy(scoreVersions.version);
+  await audit(db, actor.id, "support.attempt_lookup", { type: "attempt", id: attemptId });
+  return {
+    id: a.id,
+    kind: a.kind,
+    status: a.status,
+    startedAt: a.startedAt,
+    deadlineAt: a.deadlineAt,
+    finalizedAt: a.finalizedAt,
+    questionCount: a.questionVersionIds.length,
+    responses: resp.length,
+    lastResponseAt: resp.map((r) => r.receivedAt).sort((x, y) => y.getTime() - x.getTime())[0] ?? null,
+    pendingSync: resp.filter((r) => r.syncState !== "confirmed").length,
+    scores: scores.map((s) => ({ version: s.version, points: s.points, maxPoints: s.maxPoints, reason: s.reason, at: s.createdAt })),
+  };
+}

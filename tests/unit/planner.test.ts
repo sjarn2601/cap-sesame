@@ -82,4 +82,11 @@ describe("planification", () => {
     expect(today[0].kind).toBe("review");
     expect(today[0].minutes).toBeLessThanOrEqual(18);
   });
+  it("après le diagnostic, une notion ratée passe avant une notion jamais vue", () => {
+    const failed: Mastery = { score: null, provisional: true, status: "insufficient", autonomousAttempts: 2, families: 0, distinctDays: 1, explanation: "", observedRate: 0 };
+    const r = buildPlan(base({ mastery: new Map([["en.tenses", failed]]) }));
+    const first = r.tasks.find((t) => t.bucket === "priority");
+    expect(first?.skillId).toBe("en.tenses");
+    expect(first?.reason).toContain("premières réponses à revoir");
+  });
 });

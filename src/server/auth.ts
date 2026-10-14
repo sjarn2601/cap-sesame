@@ -2,7 +2,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { and, eq, gt, lt, sql } from "drizzle-orm";
 import type { DB } from "@/db";
-import { authSessions, loginThrottle, profiles, users, consentRecords } from "@/db/schema";
+import { authSessions, examSessionConfigs, loginThrottle, profiles, subjects, users, consentRecords } from "@/db/schema";
 import { hashPassword, verifyPassword, passwordProblems } from "@/lib/password";
 import { verifyTotp } from "@/lib/totp";
 import { AppError, badRequest } from "./errors";
@@ -34,6 +34,10 @@ export async function register(db: DB, input: RegisterInput) {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw badRequest("Adresse électronique invalide.");
   const pb = passwordProblems(input.password);
   if (pb) throw badRequest(pb);
+  const lang = await db.query.subjects.findFirst({ where: eq(subjects.code, `LV-${input.secondLanguage}`) });
+  if (!lang?.open) throw badRequest("Cette seconde langue n'est pas encore ouverte.");
+  const session = await db.query.examSessionConfigs.findFirst({ where: and(eq(examSessionConfigs.code, input.examSessionCode), eq(examSessionConfigs.status, "published")) });
+  if (!session) throw badRequest("Session inconnue.");
   const existing = await db.query.users.findFirst({ where: eq(users.email, email) });
   // Message identique pour ne pas révéler l'existence d'un compte.
   if (existing) throw new AppError("email_taken", 409, "Impossible de créer ce compte avec cette adresse.");

@@ -1,0 +1,11 @@
+{
+  "name": "CAP SESAME",
+  "short_name": "CAP SESAME",
+  "description": "Préparation au concours SESAME",
+  "start_url": "/aujourdhui",
+  "display": "standalone",
+  "background_color": "#f6f7fb",
+  "theme_color": "#2346c7",
+  "lang": "fr",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

@@ -24,7 +24,7 @@ async function plannerInputs(db: DB, userId: string, now: Date) {
   const snaps = await masteryMap(db, userId);
   const mastery = new Map<string, Mastery>();
   for (const [k, v] of snaps) {
-    mastery.set(k, { score: v.autonomousAttempts < 3 ? null : v.score, provisional: v.status === "insufficient", status: v.status as Mastery["status"], autonomousAttempts: v.autonomousAttempts, families: v.families, distinctDays: v.distinctDays, explanation: "" });
+    mastery.set(k, { score: v.autonomousAttempts < 3 ? null : v.score, provisional: v.status === "insufficient", status: v.status as Mastery["status"], autonomousAttempts: v.autonomousAttempts, families: v.families, distinctDays: v.distinctDays, explanation: "", observedRate: v.autonomousAttempts > 0 && v.autonomousAttempts < 3 ? v.score : null });
   }
   const views = await db.select().from(lessonViews).where(eq(lessonViews.userId, userId));
   const viewedLessons = new Set(views.map((v) => v.lessonId));

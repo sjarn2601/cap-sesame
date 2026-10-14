@@ -4,6 +4,7 @@ import {
   pgTable,
   pgEnum,
   uuid,
+  bigint,
   text,
   integer,
   boolean,
@@ -365,7 +366,7 @@ export const responses = pgTable(
     points: real("points"),
     maxPoints: real("max_points"),
     // Ordre côté client : une requête plus ancienne rejouée après une plus récente ne l'écrase pas.
-    clientSeq: integer("client_seq").notNull().default(0),
+    clientSeq: bigint("client_seq", { mode: "number" }).notNull().default(0),
     syncState: text("sync_state").notNull().default("confirmed"),
   },
   (t) => [

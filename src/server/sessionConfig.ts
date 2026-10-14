@@ -34,6 +34,7 @@ export async function createDraft(db: DB, actor: Actor | null, code: string, bod
   const a = assertRole(actor, ["admin", "reviewer"]);
   if (!body.examDate || body.papers.length === 0) throw badRequest("Date et épreuves obligatoires.");
   const previous = await db.query.examSessionConfigs.findFirst({ where: eq(examSessionConfigs.code, code), orderBy: desc(examSessionConfigs.version) });
+  if (previous && diffBodies(previous.body, body).length === 0) throw badRequest("Aucune différence avec la dernière version : rien à enregistrer.");
   const [row] = await db
     .insert(examSessionConfigs)
     .values({

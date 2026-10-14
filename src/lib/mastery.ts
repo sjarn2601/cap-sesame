@@ -28,6 +28,8 @@ export type Mastery = {
   families: number;
   distinctDays: number;
   explanation: string;
+  /** Taux de réussite observé quand les données sont encore insuffisantes (sert seulement à ordonner les priorités). */
+  observedRate?: number | null;
 };
 
 const dayKey = (d: Date) => d.toISOString().slice(0, 10);
@@ -51,6 +53,7 @@ export function computeMastery(events: MasteryEvent[]): Mastery {
       score: null,
       provisional: true,
       status: "insufficient",
+      observedRate: autonomous.length ? autonomous.filter((e) => e.correct).length / autonomous.length : null,
       explanation: `Données insuffisantes : ${autonomous.length} réponse(s) autonome(s) sur ${w.thresholds.minAutonomous} nécessaires.`,
     };
   }

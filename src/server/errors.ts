@@ -1,3 +1,8 @@
+import { z } from "zod";
+
+// Messages de validation en français pour toute l'application.
+z.config(z.locales.fr());
+
 export class AppError extends Error {
   constructor(
     public code: string,
