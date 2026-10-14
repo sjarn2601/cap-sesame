@@ -602,3 +602,22 @@ export const appSettings = pgTable("app_settings", {
   updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Cartes personnelles (REV-02) : rédigées par l'élève, révisées aux mêmes intervalles que le carnet. */
+export const personalCards = pgTable(
+  "personal_cards",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    subjectCode: text("subject_code").references(() => subjects.code),
+    front: text("front").notNull(),
+    back: text("back").notNull(),
+    stage: integer("stage").notNull().default(0),
+    dueAt: timestamp("due_at", { withTimezone: true }).notNull().defaultNow(),
+    lastReviewedAt: timestamp("last_reviewed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("personal_cards_user_due_idx").on(t.userId, t.dueAt)],
+);

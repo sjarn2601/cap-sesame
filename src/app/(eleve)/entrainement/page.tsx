@@ -30,6 +30,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ n
             </p>
           </div>
           <Link href="/entrainement/carnet" className="btn small ghost">Voir le carnet</Link>
+          <Link href="/entrainement/cartes" className="btn small ghost">Mes cartes</Link>
         </div>
         {log.dueToday > 0 && (
           <ActionForm action={startReviewAction}>

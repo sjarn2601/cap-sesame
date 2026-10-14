@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto";
 import { eq, inArray } from "drizzle-orm";
 import type { DB } from "@/db";
-import { attempts, consentRecords, contentReports, deletionRequests, masterySnapshots, personalNotes, profiles, responses, reviewItems, scoreVersions, studyPlans, users, lessonViews, oralDossiers, oralSessions, aiUsage } from "@/db/schema";
+import { attempts, consentRecords, contentReports, deletionRequests, masterySnapshots, personalNotes, profiles, responses, reviewItems, scoreVersions, studyPlans, users, lessonViews, oralDossiers, oralSessions, aiUsage, personalCards } from "@/db/schema";
 import { verifyPassword } from "@/lib/password";
 import { assertRole, type Actor } from "./auth";
 import { AppError } from "./errors";
@@ -28,6 +28,7 @@ export async function exportData(db: DB, actorIn: Actor | null) {
     notes: await db.select().from(personalNotes).where(eq(personalNotes.userId, actor.id)),
     lessonViews: await db.select().from(lessonViews).where(eq(lessonViews.userId, actor.id)),
     reports: await db.select().from(contentReports).where(eq(contentReports.userId, actor.id)),
+    personalCards: await db.select().from(personalCards).where(eq(personalCards.userId, actor.id)),
     oralDossier: (await db.query.oralDossiers.findFirst({ where: eq(oralDossiers.userId, actor.id) }))?.entries ?? [],
     oralSimulations: await db.select().from(oralSessions).where(eq(oralSessions.userId, actor.id)),
     assistantUsage: await db.select({ day: aiUsage.day, mode: aiUsage.mode, outcome: aiUsage.outcome }).from(aiUsage).where(eq(aiUsage.userId, actor.id)),

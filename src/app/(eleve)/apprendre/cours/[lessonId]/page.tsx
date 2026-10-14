@@ -8,6 +8,7 @@ import { AppError } from "@/server/errors";
 import { ActionForm, Submit } from "@/components/ActionForm";
 import { addNoteAction, deleteNoteAction, startPracticeAction } from "@/app/actions/student";
 import { Flashcards } from "./Flashcards";
+import { speechLang } from "@/lib/speech";
 import { ReportButton } from "@/components/ReportButton";
 import { frDate } from "@/components/labels";
 import { DownloadLesson } from "@/components/OfflineButtons";
@@ -61,7 +62,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       {lesson.flashcards.length > 0 && (
         <section className="card flat stack">
           <h2>Cartes mémoire</h2>
-          <Flashcards cards={lesson.flashcards} />
+          <Flashcards cards={lesson.flashcards} lang={speechLang(skill?.subjectCode)} />
         </section>
       )}
       <section className="card flat stack">

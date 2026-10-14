@@ -41,3 +41,13 @@ describe("ADA-02 : estimation probabiliste", () => {
     expect(difficultyFlag(2, 0.6, 40)).toBeNull();
   });
 });
+
+describe("Lecture à voix haute : comparaison tolérante", () => {
+  it("ignore accents, casse et ponctuation ; liste les mots manqués", async () => {
+    const { compareReading } = await import("@/lib/speech");
+    const r = compareReading("¿Dónde está la biblioteca?", "donde esta la");
+    expect(r.total).toBe(4);
+    expect(r.matched).toBe(3);
+    expect(r.missed).toEqual(["biblioteca"]);
+  });
+});

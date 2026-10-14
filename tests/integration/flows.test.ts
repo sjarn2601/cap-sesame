@@ -505,3 +505,35 @@ describe("ADA-02 : comparaison et retour arrière", () => {
     expect(logs).toHaveLength(2);
   });
 });
+
+describe("REV-02 : cartes personnelles et fiches", () => {
+  it("révision espacée des cartes, export regroupé par type d'erreur, isolement", async () => {
+    const cards = await import("@/server/cards");
+    const a = await newStudent("rev02@test.fr");
+    const c = await cards.createCard(db, a, { front: "to rely on", back: "compter sur", subjectCode: "EN" });
+    await expect(cards.createCard(db, a, { front: " ", back: "x" })).rejects.toThrow();
+    expect((await cards.listCards(db, a)).due).toHaveLength(1);
+    const now = new Date("2026-10-14T08:00:00Z");
+    const r1 = await cards.reviewCard(db, a, c.id, true, now);
+    expect(r1.dueAt.toISOString().slice(0, 10)).toBe("2026-10-15");
+    const r2 = await cards.reviewCard(db, a, c.id, true, now);
+    expect(r2.dueAt.toISOString().slice(0, 10)).toBe("2026-10-17");
+    const r3 = await cards.reviewCard(db, a, c.id, false, now);
+    expect(r3.stage).toBe(0);
+
+    const p = await createPractice(db, a, { subjectCode: "MATH", size: "short" });
+    await answerAll(a, p.id, false);
+    await finalizeAttempt(db, a, p.id);
+    const md = await cards.exportSheets(db, a, "md");
+    expect(md).toMatch(/^# Mes fiches de révision/);
+    expect(md).toMatch(/## (Connaissance|Lecture|Gestion du temps|Cause à préciser)/);
+    expect(md).toContain("**to rely on** : compter sur");
+    const csv = await cards.exportSheets(db, a, "csv");
+    expect(csv.split("\n")[0]).toBe("type;groupe;notion;recto_ou_regle;verso;statut");
+
+    const b = await newStudent("rev02b@test.fr");
+    await expect(cards.reviewCard(db, b, c.id, true)).rejects.toThrow(/introuvable/);
+    await expect(cards.deleteCard(db, b, c.id)).rejects.toThrow(/introuvable/);
+    expect((await exportData(db, a)).personalCards).toHaveLength(1);
+  });
+});

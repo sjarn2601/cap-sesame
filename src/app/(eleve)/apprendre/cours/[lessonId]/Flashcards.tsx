@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
+import { SpeakButton } from "@/components/SpeakButton";
 
-export function Flashcards({ cards }: { cards: { front: string; back: string; reversible: boolean }[] }) {
+export function Flashcards({ cards, lang }: { cards: { front: string; back: string; reversible: boolean }[]; lang?: string | null }) {
   const [flipped, setFlipped] = useState<Record<number, boolean>>({});
   const [reverse, setReverse] = useState(false);
   return (
@@ -22,6 +23,7 @@ export function Flashcards({ cards }: { cards: { front: string; back: string; re
                 {flipped[i] ? <strong>{back}</strong> : front}
                 <span className="justif">{flipped[i] ? "Cliquer pour revenir" : "Cliquer pour voir la réponse"}</span>
               </button>
+              {lang && <SpeakButton text={c.front} lang={lang} />}
             </div>
           );
         })}
