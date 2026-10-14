@@ -99,10 +99,10 @@ test("analyse documentaire : documents et questions côte à côte @mobile", asy
   const narrow = (page.viewportSize()?.width ?? 1280) < 760;
   if (narrow) {
     await page.getByRole("tab", { name: "Documents" }).click();
-    await expect(page.getByText("Document 1")).toBeVisible();
+    await expect(page.getByText("Document 1", { exact: true })).toBeVisible();
     await page.getByRole("tab", { name: "Question" }).click();
   } else {
-    await expect(page.getByText("Document 1")).toBeVisible();
+    await expect(page.getByText("Document 1", { exact: true })).toBeVisible();
     await expect(page.locator(".options")).toBeVisible();
   }
   const width = await page.evaluate(() => document.documentElement.scrollWidth);

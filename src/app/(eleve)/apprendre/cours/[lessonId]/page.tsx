@@ -45,10 +45,10 @@ export default async function Page({ params, searchParams }: { params: Promise<{
         <ul>{lesson.objectives.map((o) => <li key={o}>{o}</li>)}</ul>
         {lesson.prerequisites.length > 0 && <p className="small muted">Prérequis : {lesson.prerequisites.map((p) => <Link key={p} href={`/apprendre/cours/L-${p}`}>{p}</Link>)}</p>}
       </section>
-      {lesson.sections.map((s, i) => (
+      {lesson.sections.map((s) => (
         <section key={s.anchor} id={s.anchor} className="card stack" style={{ scrollMarginTop: 80 }}>
-          {i < 3 ? <h2>{s.title}</h2> : null}
-          {i < 3 ? (
+          {s.anchor !== "approfondir" ? <h2>{s.title}</h2> : null}
+          {s.anchor !== "approfondir" ? (
             <p className="lesson-body">{s.body}</p>
           ) : (
             <details>

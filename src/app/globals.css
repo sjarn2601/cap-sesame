@@ -861,3 +861,6 @@ table.data th {
 .timeline li::before { content: ""; position: absolute; left: -29px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 3px solid var(--surface); }
 .timeline-date { display: block; font-size: 0.85rem; color: var(--muted); }
 .grid.zones { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+
+/* Les cours séparent leurs paragraphes et leurs lignes de formules par des retours à la ligne. */
+.lesson-body { white-space: pre-line; }

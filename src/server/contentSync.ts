@@ -4,7 +4,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import type { DB } from "@/db";
 import * as s from "@/db/schema";
-import { qualityChecks } from "@/lib/editorial";
+import { normalize, qualityChecks } from "@/lib/editorial";
 import { SUBJECTS, lessonSections } from "@/content/demo-catalog";
 import { ALL_DOCUMENT_SETS, ALL_LANGUAGE_EXERCISES, ALL_LESSONS, ALL_NEWS, ALL_QUESTIONS, ALL_SKILLS } from "@/content/bank";
 
@@ -116,13 +116,16 @@ export async function syncContent(db: DB, editors: Editors): Promise<SyncReport>
   }
 
   // Questions.
-  const stems: { questionId: string; stem: string }[] = [];
+  // Doublons exacts seulement : la proximité d'énoncés est un avertissement de rédaction (scripts/check-content.ts).
+  const seenStems = new Map<string, string>();
   const KEYS = ["subjectCode", "skillIds", "familyId", "difficulty", "format", "stem", "options", "numericAnswer", "numericTolerance", "explanation", "rule", "hints", "timeSec", "references", "lessonAnchor", "reserved", "documentSetVersionId"];
   for (const q of ALL_QUESTIONS) {
     const { documentSet, isDemo, ...rest } = q;
-    const issues = qualityChecks({ ...rest, numericAnswer: q.numericAnswer ?? null }, stems).filter((i) => i.blocking);
-    if (issues.length) throw new Error(`${q.questionId} : ${issues.map((i) => i.message).join(", ")}`);
-    stems.push({ questionId: q.questionId, stem: q.stem });
+    const issues = qualityChecks({ ...rest, numericAnswer: q.numericAnswer ?? null }, []).filter((i) => i.blocking).map((i) => i.message);
+    const key = normalize(q.stem);
+    if (seenStems.has(key)) issues.push(`doublon exact de ${seenStems.get(key)}`);
+    seenStems.set(key, q.questionId);
+    if (issues.length) throw new Error(`${q.questionId} : ${issues.join(", ")}`);
     const body = { ...rest, numericAnswer: q.numericAnswer ?? null, numericTolerance: q.numericTolerance ?? null, reserved: q.reserved ?? false, documentSetVersionId: documentSet ? docVersion.get(documentSet)! : null };
     const [last] = await db.select().from(s.questionVersions).where(eq(s.questionVersions.questionId, q.questionId)).orderBy(desc(s.questionVersions.version)).limit(1);
     // Une question suspendue ou retirée depuis l'administration n'est pas republiée d'office.

@@ -16,7 +16,7 @@ Prérequis : Node 22, PostgreSQL 16 accessible localement.
 npm install
 cp .env.example .env            # adapter DATABASE_URL et TEST_DATABASE_URL
 createdb sesame && createdb sesame_test
-npm run db:reset                # crée le schéma et charge la banque de démonstration
+npm run db:reset                # crée le schéma et charge la banque de préparation
 npm run dev                     # http://localhost:3000
 ```
 
@@ -61,7 +61,7 @@ src/
   lib/            règles métier pures et testées : scoring, mastery, spaced, planner, adaptive, editorial, totp
   server/         accès aux données et contrôles : auth, attempts, plan, catalog, progress, editorialAdmin, privacy
   db/             schéma Drizzle
-  content/        banque de démonstration (questions, cours, dossier documentaire, actualités, session 2027)
+  content/        catalogue (session 2027, oraux) et banque de préparation par épreuve dans content/bank/
 scripts/          seed, reset, totp
 docs/import.md    schéma et contrôles de l'import de questions
 ```
@@ -84,7 +84,7 @@ Principes :
 | UX-01 prochaine activité en deux interactions | Fait : `/aujourdhui` |
 | COU-01 cours et recherche | Fait : matière, compétence, recherche, cartes mémoire, notes, signalement |
 | BAN-01 banque et chaîne éditoriale | Fait : versions, contrôles qualité, relecture par une autre personne, import par lots |
-| MAT-01, DIG-01, LAN-01, ACT-01, DOC-01 | Fait sur une banque de démonstration originale (87 questions, 24 cours, un dossier documentaire). Le volume réel reste à produire. |
+| MAT-01, DIG-01, LAN-01, ACT-01, DOC-01 | Fait : banque de préparation originale de 102 cours et 1 299 questions sur les huit épreuves (allemand et espagnol en seconde langue), quatre dossiers documentaires complets et 40 fiches d'actualité sourcées. Chaque question a été relue par un second relecteur. Voir « Banque de préparation ». |
 | ADA-01 sélection adaptative | Fait : règles explicables, un tiers hors points faibles, fraîcheur |
 | REV-01 carnet d'erreurs | Fait : cause probable, révisions à 1, 3, 7, 21 jours, plafond quotidien |
 | PLA-01 planification | Fait : disponibilités, 50/30/20, périodes bloquées, recalcul après absence |
@@ -152,8 +152,26 @@ SESAME_AI_TIMEOUT_MS=20000            # délai maximal
 
 ## Limites connues
 
-- La banque de démonstration est petite : les simulations sont réduites et leur durée ajustée, ce qui est indiqué à l'élève.
+- Les questions d'actualité vieillissent : les fiches portent leur date de vérification (14 octobre 2026) et doivent être complétées au fil de l'année jusqu'au concours.
 - Les données officielles (dates, coefficients, barèmes) sont celles du cahier des charges et sont marquées « à revérifier » dans la configuration.
 - Les envois d'e-mails (vérification, rappels) ne sont pas branchés.
 - Les fiches de programme fournies sont des exemples d'écoles fictives : les vraies fiches sont à rédiger école par école depuis les pages officielles.
 - Le jeu d'évaluation de l'assistant demandé par IA-02 (150 questions de référence, 50 demandes ambiguës, 30 attaques d'instructions, relecture humaine) reste à constituer.
+
+## Banque de préparation
+
+Les cours et questions sont dans `src/content/bank/`, un fichier par épreuve. Ils couvrent les notions observées aux sessions SESAME depuis la réforme de 2024 (recherche résumée dans `docs/notions-sesame.md`) ; SESAME ne publie pas ses sujets, toutes les questions sont donc originales. Règles de rédaction : `docs/redaction-banque.md`.
+
+| Épreuve | Cours | Questions |
+|---|---|---|
+| Mathématiques | 16 | 184 |
+| Compétences digitales | 12 | 153 |
+| Enjeux contemporains (et 40 fiches d'actualité) | 12 | 174 |
+| Français | 14 | 209 |
+| Anglais | 16 | 195 |
+| Allemand (et 8 exercices oraux) | 13 | 144 |
+| Espagnol (et 7 exercices oraux) | 14 | 149 |
+| Analyse documentaire (4 dossiers) | 5 | 91 |
+
+- `npx tsx scripts/check-content.ts [MATIÈRE]` contrôle la banque (identifiants, références, doublons, bonne réponse unique, justifications).
+- À chaque déploiement, `npm run db:deploy` publie les contenus nouveaux ou modifiés comme nouvelle version et retire l'ancienne ; une question suspendue depuis l'administration n'est pas republiée.
