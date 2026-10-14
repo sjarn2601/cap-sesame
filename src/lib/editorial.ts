@@ -107,7 +107,7 @@ export function qualityChecks(q: QuestionDraft, others: { questionId: string; st
   if (q.format === "multiple" && correct < 1) issues.push({ code: "no_correct", message: "Aucune bonne réponse définie.", blocking: true });
   if (q.format === "numeric" && (q.numericAnswer === null || q.numericAnswer === undefined)) issues.push({ code: "numeric_answer", message: "Réponse numérique attendue absente.", blocking: true });
   if (q.format !== "numeric" && q.options.length < 2) issues.push({ code: "options", message: "Moins de deux options.", blocking: true });
-  const texts = q.options.map((o) => normalize(o.text));
+  const texts = q.options.map((o) => o.text.trim().toLowerCase().replace(/\s+/g, " "));
   if (new Set(texts).size !== texts.length) issues.push({ code: "duplicate_option", message: "Deux options identiques (options contradictoires ou doublon).", blocking: true });
   if (q.options.some((o) => !o.justification.trim())) issues.push({ code: "justification", message: "Chaque option doit avoir une justification.", blocking: true });
   if (q.references.length === 0) issues.push({ code: "references", message: "Références manquantes.", blocking: true });

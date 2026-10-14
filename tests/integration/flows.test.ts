@@ -1,0 +1,285 @@
+// Scénarios P0 bloquants (section 26) exécutés contre une vraie base PostgreSQL.
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { and, eq, sql } from "drizzle-orm";
+import { prepareTestDb } from "./setup";
+import type { DB } from "@/db";
+import * as s from "@/db/schema";
+import { register, login, actorFromToken, verifyMfa, assertRole, type Actor } from "@/server/auth";
+import { createDiagnostic, createPractice, createExam, saveResponse, finalizeAttempt, getAttemptView, getResult, submitSection } from "@/server/attempts";
+import { ensurePlan, getToday } from "@/server/plan";
+import { createDraft, approveConfig } from "@/server/sessionConfig";
+import { transitionContent, neutralizeQuestion, dryRunBatch, applyBatch, createQuestionDraft } from "@/server/editorialAdmin";
+import { exportData, deleteAccount } from "@/server/privacy";
+import { getReviewLog } from "@/server/reviewLog";
+import { totp } from "@/lib/totp";
+import { sumMinutesByDate, dayMinutes } from "@/lib/planner";
+import { SESSION_2027 } from "@/content/demo-catalog";
+
+let db: DB;
+const PW = "motdepasse-solide-1";
+const SECRET = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP";
+
+async function newStudent(email: string): Promise<Actor> {
+  await register(db, { email, password: PW, examSessionCode: "2027", secondLanguage: "ES", consentAge: "15_plus" });
+  const { token } = await login(db, email, PW);
+  return (await actorFromToken(db, token))!;
+}
+
+async function staff(email: string): Promise<Actor> {
+  const { token } = await login(db, email, "demo-sesame-2027");
+  await verifyMfa(db, token, totp(SECRET));
+  return (await actorFromToken(db, token))!;
+}
+
+async function answerAll(actor: Actor, attemptId: string, correctly: boolean) {
+  const view = await getAttemptView(db, actor, attemptId);
+  for (const q of view.questions) {
+    const full = await db.query.questionVersions.findFirst({ where: eq(s.questionVersions.id, q.id) });
+    const right = full!.options.filter((o) => o.correct).map((o) => o.id);
+    const wrong = full!.options.filter((o) => !o.correct).map((o) => o.id).slice(0, 1);
+    await saveResponse(db, actor, attemptId, { questionVersionId: q.id, idempotencyKey: `k-${q.id}`, selected: correctly ? right : wrong, durationMs: 20000 });
+  }
+}
+
+beforeAll(async () => {
+  db = await prepareTestDb();
+}, 120000);
+
+afterAll(async () => {
+  const { closeDb } = await import("@/db");
+  await closeDb();
+});
+
+describe("R01 : compte, diagnostic et premier plan sans écran vide", () => {
+  it("parcours complet", async () => {
+    const a = await newStudent("r01@test.fr");
+    const before = await getToday(db, a);
+    expect(before.diagnosticPending).toBe(true);
+    expect(before.main).not.toBeNull();
+    const diag = await createDiagnostic(db, a);
+    expect(diag.questionVersionIds.length).toBeGreaterThanOrEqual(10);
+    // Interruption puis reprise au dernier état confirmé.
+    const view = await getAttemptView(db, a, diag.id);
+    await saveResponse(db, a, diag.id, { questionVersionId: view.questions[0].id, idempotencyKey: "first", selected: [view.questions[0].options[0].id], durationMs: 15000, confidence: 2 });
+    const resumed = await createDiagnostic(db, a);
+    expect(resumed.id).toBe(diag.id);
+    await answerAll(a, diag.id, true);
+    await finalizeAttempt(db, a, diag.id);
+    const { plan } = await ensurePlan(db, a.id);
+    expect(plan!.tasks.length).toBeGreaterThan(0);
+    const profile = await db.query.profiles.findFirst({ where: eq(s.profiles.userId, a.id) });
+    for (const [date, minutes] of sumMinutesByDate(plan!.tasks)) {
+      expect(minutes).toBeLessThanOrEqual(dayMinutes({ availability: profile!.availability, rhythm: "regular", blockedPeriods: [] }, new Date(`${date}T00:00:00Z`)));
+    }
+    const today = await getToday(db, a);
+    expect(today.diagnosticPending).toBe(false);
+  });
+});
+
+describe("R03 : fermeture et reprise d'une séance libre", () => {
+  it("aucune réponse confirmée perdue, aucune réponse doublée", async () => {
+    const a = await newStudent("r03@test.fr");
+    const p = await createPractice(db, a, { subjectCode: "MATH", size: "short" });
+    const view = await getAttemptView(db, a, p.id);
+    const q0 = view.questions[0];
+    const first = await saveResponse(db, a, p.id, { questionVersionId: q0.id, idempotencyKey: "abc", selected: [q0.options[0].id], durationMs: 12000 });
+    const replay = await saveResponse(db, a, p.id, { questionVersionId: q0.id, idempotencyKey: "abc", selected: [q0.options[0].id], durationMs: 12000 });
+    expect(replay.receivedAt).toBe(first.receivedAt);
+    expect(first.correction).not.toBeNull();
+    const rows = await db.select().from(s.responses).where(eq(s.responses.attemptId, p.id));
+    expect(rows).toHaveLength(1);
+    // « Fermeture » : on relit la séance depuis zéro.
+    const again = await getAttemptView(db, a, p.id);
+    expect(again.questions[0].response?.selected).toEqual([q0.options[0].id]);
+    expect(again.questions[0].correction).not.toBeNull();
+    expect(again.questions[1].response).toBeNull();
+  });
+
+  it("une erreur crée une révision datée dans le carnet", async () => {
+    const a = await newStudent("rev@test.fr");
+    const p = await createPractice(db, a, { subjectCode: "FR", size: "short" });
+    await answerAll(a, p.id, false);
+    const log = await getReviewLog(db, a);
+    expect(log.items.length).toBeGreaterThan(0);
+    const tomorrow = new Date();
+    tomorrow.setUTCHours(0, 0, 0, 0);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    expect(log.items[0].dueAt.toISOString()).toBe(tomorrow.toISOString());
+  });
+});
+
+describe("R04 / R05 : concours blanc strict", () => {
+  it("aucune correction anticipée, réponse tardive refusée, double soumission sans double résultat", async () => {
+    const a = await newStudent("r04@test.fr");
+    const exam = await createExam(db, a, { subject: "MATH", mode: "strict" });
+    const view = await getAttemptView(db, a, exam.id);
+    const json = JSON.stringify(view);
+    expect(json).not.toContain('"correct"');
+    expect(json).not.toContain("justification");
+    expect(json).not.toContain("explanation");
+    const q = view.questions[0];
+    const saved = await saveResponse(db, a, exam.id, { questionVersionId: q.id, idempotencyKey: "s1", selected: [q.options[0].id], clientSeq: 1 });
+    expect(saved.correction).toBeNull();
+    // Changement de réponse autorisé avant l'échéance ; une requête plus ancienne rejouée ne l'écrase pas.
+    await saveResponse(db, a, exam.id, { questionVersionId: q.id, idempotencyKey: "s2", selected: [q.options[1].id], clientSeq: 2 });
+    await saveResponse(db, a, exam.id, { questionVersionId: q.id, idempotencyKey: "s1-retry", selected: [q.options[0].id], clientSeq: 1 });
+    const r = await db.query.responses.findFirst({ where: and(eq(s.responses.attemptId, exam.id), eq(s.responses.questionVersionId, q.id)) });
+    expect(r!.selected).toEqual([q.options[1].id]);
+    expect(await getResult(db, a, exam.id).catch((e) => e.code)).toBe("not_finished");
+
+    // L'échéance serveur est dépassée (l'horloge de l'appareil n'intervient pas).
+    const meta = { ...(exam.meta as object), sectionDeadline: new Date(Date.now() - 1000).toISOString() };
+    await db.update(s.attempts).set({ meta }).where(eq(s.attempts.id, exam.id));
+    const late = await saveResponse(db, a, exam.id, { questionVersionId: view.questions[1].id, idempotencyKey: "late", selected: [view.questions[1].options[0].id] }).catch((e) => e.code);
+    expect(late).toBe("attempt_closed");
+    const att = await db.query.attempts.findFirst({ where: eq(s.attempts.id, exam.id) });
+    expect(att!.status).toBe("expired");
+
+    await Promise.all([finalizeAttempt(db, a, exam.id), finalizeAttempt(db, a, exam.id), finalizeAttempt(db, a, exam.id)]);
+    const scores = await db.select().from(s.scoreVersions).where(eq(s.scoreVersions.attemptId, exam.id));
+    expect(scores).toHaveLength(1);
+    const result = await getResult(db, a, exam.id);
+    expect(result.items[0].options.some((o) => o.correct)).toBe(true);
+  });
+
+  it("soumissions concurrentes d'une tentative en cours : un seul résultat", async () => {
+    const a = await newStudent("r04b@test.fr");
+    const exam = await createExam(db, a, { subject: "FR", mode: "strict" });
+    await Promise.all(Array.from({ length: 5 }, () => submitSection(db, a, exam.id, 0)));
+    const scores = await db.select().from(s.scoreVersions).where(eq(s.scoreVersions.attemptId, exam.id));
+    expect(scores).toHaveLength(1);
+  });
+
+  it("concours complet : sections successives, pause encadrée", async () => {
+    const a = await newStudent("full@test.fr");
+    const exam = await createExam(db, a, { subject: "FULL", mode: "strict" });
+    const view = await getAttemptView(db, a, exam.id);
+    expect(view.sections!.length).toBe(7);
+    expect(view.sections!.find((x) => x.subject === "DOC")!.rule).toBe("doc_partial");
+    const after = await submitSection(db, a, exam.id, 0);
+    const m = after.meta as { current: number; pauseUntil: string | null; sectionStartedAt: string | null };
+    expect(m.current).toBe(1);
+    expect(m.pauseUntil).not.toBeNull();
+    expect(m.sectionStartedAt).toBeNull();
+    // Une question de la section 0 ne peut plus être modifiée.
+    const err = await saveResponse(db, a, exam.id, { questionVersionId: view.questions[0].id, idempotencyKey: "x", selected: ["a"] }).catch((e) => e.code);
+    expect(err).toBe("wrong_section");
+  });
+
+  it("un élève ne lit ni ne modifie la tentative d'un autre", async () => {
+    const a = await newStudent("a@test.fr");
+    const b = await newStudent("b@test.fr");
+    const p = await createPractice(db, a, { subjectCode: "EN", size: "short" });
+    await expect(getAttemptView(db, b, p.id)).rejects.toMatchObject({ code: "not_found" });
+    await expect(getResult(db, b, p.id)).rejects.toMatchObject({ code: "not_found" });
+    await expect(saveResponse(db, b, p.id, { questionVersionId: p.questionVersionIds[0], idempotencyKey: "z", selected: ["a"] })).rejects.toMatchObject({ code: "not_found" });
+    await expect(finalizeAttempt(db, b, p.id)).rejects.toMatchObject({ code: "not_found" });
+  });
+});
+
+describe("R06 : changement de session sans modifier une ancienne tentative", () => {
+  it("la tentative garde sa version de configuration", async () => {
+    const a = await newStudent("r06@test.fr");
+    const exam = await createExam(db, a, { subject: "DIG", mode: "pedagogic" });
+    await finalizeAttempt(db, a, exam.id);
+    const admin = await staff("admin@demo.cap-sesame.fr");
+    const r1 = await staff("relecteur@demo.cap-sesame.fr");
+    const r2 = await staff("relecteur2@demo.cap-sesame.fr");
+    const body = { ...SESSION_2027, papers: SESSION_2027.papers.map((p) => (p.subject === "DIG" ? { ...p, minutes: 25 } : p)) };
+    const draft = await createDraft(db, admin, "2027", body, "2026-11-01");
+    expect(draft.diffFromPrevious.length).toBeGreaterThan(0);
+    await expect(approveConfig(db, admin, draft.id)).rejects.toMatchObject({ code: "self_approval" });
+    await approveConfig(db, r1, draft.id);
+    await expect(approveConfig(db, r1, draft.id)).rejects.toMatchObject({ code: "same_approver" });
+    expect(await approveConfig(db, r2, draft.id)).toBe("published");
+    const result = await getResult(db, a, exam.id);
+    expect(result.configVersion).toBe("2027 v1");
+  });
+});
+
+describe("R07 : retrait d'une question erronée et recalcul traçable", () => {
+  it("nouvelle version de score avec avant/après, historique conservé", async () => {
+    const a = await newStudent("r07@test.fr");
+    const exam = await createExam(db, a, { subject: "ACT", mode: "strict" });
+    await answerAll(a, exam.id, true);
+    await finalizeAttempt(db, a, exam.id);
+    const before = await getResult(db, a, exam.id);
+    const reviewer = await staff("relecteur@demo.cap-sesame.fr");
+    const target = exam.questionVersionIds[0];
+    await expect(neutralizeQuestion(db, reviewer, target, "Option ambiguë")).rejects.toMatchObject({ code: "bad_request" });
+    await transitionContent(db, reviewer, "question", target, "suspended", "Contestation : option B ambiguë");
+    const changes = await neutralizeQuestion(db, reviewer, target, "Option B ambiguë, question neutralisée");
+    expect(changes.find((c) => c.attemptId === exam.id)).toBeTruthy();
+    const after = await getResult(db, a, exam.id);
+    expect(after.scoreHistory).toHaveLength(2);
+    expect(after.score!.maxPoints).toBe(before.score!.maxPoints - 1);
+    expect(after.score!.reason).toContain("neutralisée");
+    expect(after.items.find((i) => i.id === target)!.withdrawn).toBe(true);
+    // Répéter le recalcul ne crée pas de nouvelle version.
+    await neutralizeQuestion(db, reviewer, target, "Option B ambiguë, question neutralisée");
+    expect((await getResult(db, a, exam.id)).scoreHistory).toHaveLength(2);
+  });
+});
+
+describe("Chaîne éditoriale et droits", () => {
+  it("l'équipe doit valider le second facteur", async () => {
+    const { token } = await login(db, "auteur@demo.cap-sesame.fr", "demo-sesame-2027");
+    const actor = await actorFromToken(db, token);
+    expect(() => assertRole(actor, ["author"])).toThrow(/renforcée/);
+  });
+
+  it("un auteur ne valide pas sa propre question ; une proposition IA reste en brouillon", async () => {
+    const author = await staff("auteur@demo.cap-sesame.fr");
+    const reviewer = await staff("relecteur@demo.cap-sesame.fr");
+    const { row, issues } = await createQuestionDraft(db, author, {
+      questionId: "TEST-Q-001", subjectCode: "MATH", skillIds: ["math.calc"], familyId: "math.calc.test", difficulty: 1, format: "single",
+      stem: "Combien font 7 × 8 ?", options: [{ id: "a", text: "56", correct: true, justification: "Table de 7." }, { id: "b", text: "54", correct: false, justification: "Erreur de table." }],
+      explanation: "7 × 8 = 56.", rule: "Tables de multiplication.", hints: [], timeSec: 20, references: ["Cours"], origin: "ai", rightsCleared: true, reserved: false,
+    });
+    expect(row.status).toBe("draft");
+    expect(issues.filter((i) => i.blocking)).toHaveLength(0);
+    await transitionContent(db, author, "question", row.id, "in_review");
+    await expect(transitionContent(db, author, "question", row.id, "format_check")).rejects.toMatchObject({ code: "transition_refused" });
+    await transitionContent(db, reviewer, "question", row.id, "format_check");
+    await transitionContent(db, reviewer, "question", row.id, "validated");
+    await transitionContent(db, reviewer, "question", row.id, "published");
+  });
+
+  it("un lot invalide n'est pas appliqué partiellement sans accord", async () => {
+    const author = await staff("auteur@demo.cap-sesame.fr");
+    const good = { questionId: "BATCH-001", subjectCode: "FR", skillIds: ["fr.vocab"], familyId: "fr.voc.batch", difficulty: 1, format: "single", stem: "Que signifie « laconique » ?", options: [{ id: "a", text: "Bref", correct: true, justification: "Qui s'exprime en peu de mots." }, { id: "b", text: "Bavard", correct: false, justification: "Antonyme." }], explanation: "Laconique : concis.", rule: "Laconique = bref.", hints: [], timeSec: 30, references: ["Dictionnaire"] };
+    const bad = { ...good, questionId: "BATCH-002", stem: "Question sans bonne réponse", options: [{ id: "a", text: "x", correct: false, justification: "-" }, { id: "b", text: "y", correct: false, justification: "-" }] };
+    const report = await dryRunBatch(db, author, [good, bad]);
+    expect(report[1].errors.length).toBeGreaterThan(0);
+    await expect(applyBatch(db, author, [good, bad], { allowPartial: false })).rejects.toMatchObject({ code: "batch_invalid" });
+    expect(await db.query.questionVersions.findFirst({ where: eq(s.questionVersions.questionId, "BATCH-001") })).toBeUndefined();
+    const ok = await applyBatch(db, author, [good, bad], { allowPartial: true });
+    expect(ok.applied).toBe(1);
+    const imported = await db.query.questionVersions.findFirst({ where: eq(s.questionVersions.questionId, "BATCH-001") });
+    expect(imported!.status).toBe("draft");
+  });
+});
+
+describe("R08 : export et suppression", () => {
+  it("export exploitable puis suppression suivie jusqu'à clôture", async () => {
+    const a = await newStudent("r08@test.fr");
+    const p = await createPractice(db, a, { subjectCode: "DIG", size: "short" });
+    await answerAll(a, p.id, true);
+    await finalizeAttempt(db, a, p.id);
+    const data = await exportData(db, a);
+    expect(data.attempts).toHaveLength(1);
+    expect(data.responses.length).toBeGreaterThan(0);
+    await expect(deleteAccount(db, a, "mauvais")).rejects.toMatchObject({ code: "bad_credentials" });
+    const reqId = await deleteAccount(db, a, PW);
+    expect(await db.query.users.findFirst({ where: eq(s.users.id, a.id) })).toBeUndefined();
+    expect((await db.select({ n: sql<number>`count(*)::int` }).from(s.attempts).where(eq(s.attempts.userId, a.id)))[0].n).toBe(0);
+    const req = await db.query.deletionRequests.findFirst({ where: eq(s.deletionRequests.id, reqId) });
+    expect(req!.status).toBe("closed");
+  });
+
+  it("limitation des tentatives de connexion", async () => {
+    await newStudent("throttle@test.fr");
+    for (let i = 0; i < 5; i++) await login(db, "throttle@test.fr", "faux", "1.2.3.4").catch(() => null);
+    await expect(login(db, "throttle@test.fr", PW, "1.2.3.4")).rejects.toMatchObject({ code: "throttled" });
+  });
+});

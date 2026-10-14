@@ -54,6 +54,8 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   role: roleEnum("role").notNull().default("student"),
   displayName: text("display_name"),
+  // Secret TOTP (authentification renforcée obligatoire pour les comptes de l'équipe).
+  totpSecret: text("totp_secret"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
 });
@@ -65,6 +67,7 @@ export const authSessions = pgTable("auth_sessions", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  mfaVerified: boolean("mfa_verified").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -142,6 +145,7 @@ export type SessionConfigBody = {
   oralPeriod: { from: string; to: string };
   papers: ExamPaper[];
   breaks: string;
+  pauseMaxMinutes: number;
   navigation: "free" | "linear";
   languages: string[];
   coefficients: Record<string, Record<string, number> | null>;
@@ -198,6 +202,7 @@ const editorial = {
   reviewerId: uuid("reviewer_id").references(() => users.id, { onDelete: "set null" }),
   rightsCleared: boolean("rights_cleared").notNull().default(false),
   isDemo: boolean("is_demo").notNull().default(false),
+  importBatchId: text("import_batch_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   publishedAt: timestamp("published_at", { withTimezone: true }),
 };
@@ -359,6 +364,8 @@ export const responses = pgTable(
     isCorrect: boolean("is_correct"),
     points: real("points"),
     maxPoints: real("max_points"),
+    // Ordre côté client : une requête plus ancienne rejouée après une plus récente ne l'écrase pas.
+    clientSeq: integer("client_seq").notNull().default(0),
     syncState: text("sync_state").notNull().default("confirmed"),
   },
   (t) => [
@@ -421,7 +428,7 @@ export const reviewItems = pgTable(
     cause: errorCauseEnum("cause").notNull(),
     causeEditedByUser: boolean("cause_edited_by_user").notNull().default(false),
     rule: text("rule").notNull(),
-    examples: jsonb("examples").$type<{ questionVersionId: string; attemptId: string; at: string }[]>().notNull(),
+    examples: jsonb("examples").$type<{ questionVersionId: string; questionId: string; attemptId: string; at: string }[]>().notNull(),
     stage: integer("stage").notNull().default(0),
     consecutiveFailures: integer("consecutive_failures").notNull().default(0),
     dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
@@ -471,6 +478,20 @@ export const personalNotes = pgTable("personal_notes", {
   body: text("body").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const lessonViews = pgTable(
+  "lesson_views",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    lessonId: text("lesson_id").notNull(),
+    lessonVersionId: uuid("lesson_version_id").notNull(),
+    version: integer("version").notNull(),
+    viewedAt: timestamp("viewed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.lessonId] })],
+);
 
 export const contentReports = pgTable("content_reports", {
   id: uuid("id").primaryKey().defaultRandom(),
