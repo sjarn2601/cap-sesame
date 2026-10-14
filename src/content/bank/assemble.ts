@@ -8,7 +8,9 @@ export type Flagged<T> = T & { isDemo: boolean };
 
 export function assemble(banksIn: Record<string, SubjectBank>) {
   const banks = Object.values(banksIn);
-  const skills: SkillDef[] = [...SKILLS, ...banks.flatMap((b) => b.skills.filter((s) => !SKILLS.some((d) => d.id === s.id)))];
+  // Une compétence redéfinie par une banque (nom, synonymes) remplace celle de démonstration.
+  const bankSkills = banks.flatMap((b) => b.skills);
+  const skills: SkillDef[] = [...SKILLS.map((d) => bankSkills.find((s) => s.id === d.id) ?? d), ...bankSkills.filter((s) => !SKILLS.some((d) => d.id === s.id))];
   const bankLessons = banks.flatMap((b) => b.lessons);
   const lessons: Flagged<LessonDef>[] = [
     ...DEMO_LESSONS.filter((l) => !bankLessons.some((b) => b.skillId === l.skillId)).map((l) => ({ ...l, isDemo: true })),
