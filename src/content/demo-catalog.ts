@@ -209,3 +209,47 @@ export const SESSION_2027: SessionConfigBody = {
     { id: "S5", label: "Règlement 2026 (annonce du règlement 2026-2027)", url: "https://www.concours-sesame.net/media/8952/Concours-SESAME-2026-Reglement-concours.pdf" },
   ],
 };
+
+// ---------- Oraux (ORA-01) ----------
+// Fiches de démonstration : écoles fictives. Les vraies fiches sont rédigées école par école à partir des pages officielles.
+export const PROGRAM_SHEETS = [
+  {
+    school: "École de démonstration Atlantique",
+    program: "Programme Grande École post-bac (exemple)",
+    campus: "Campus de démonstration, Nantes",
+    sessionCode: "2027",
+    oralFormat: "Entretien individuel d'environ 20 minutes : présentation libre, échange sur le projet et questions de motivation. Format fictif donné à titre d'exemple.",
+    expectations: ["Expliquer pourquoi ce programme plutôt qu'un autre", "S'appuyer sur des expériences vécues", "Montrer une curiosité pour l'international"],
+    keywords: ["international", "échange", "projet", "associatif", "entreprise", "langues"],
+    questions: ["Qu'est-ce qui t'attire dans un parcours avec une année à l'étranger ?", "Quel cours de ce programme te semble le plus utile pour ton projet, et pourquoi ?"],
+    sources: [{ label: "Exemple fictif : à remplacer par la page officielle de l'école", url: "https://www.concours-sesame.net/" }],
+  },
+  {
+    school: "École de démonstration Rhône",
+    program: "Bachelor management et numérique (exemple)",
+    campus: "Campus de démonstration, Lyon",
+    sessionCode: "2027",
+    oralFormat: "Entretien collectif puis individuel. Format fictif donné à titre d'exemple : chaque école fixe ses propres modalités.",
+    expectations: ["Travailler en groupe et écouter les autres", "Relier le numérique à un projet concret", "Argumenter sans réciter"],
+    keywords: ["numérique", "groupe", "équipe", "données", "projet", "management"],
+    questions: ["Raconte une situation où tu as dû convaincre un groupe.", "Comment le numérique transforme-t-il un métier qui t'intéresse ?"],
+    sources: [{ label: "Exemple fictif : à remplacer par la page officielle de l'école", url: "https://www.concours-sesame.net/" }],
+  },
+];
+
+export const MOTIVATION_QUESTIONS = [
+  "Présente-toi en deux minutes, comme tu le ferais devant le jury.",
+  "Pourquoi une école de commerce après le bac plutôt qu'une autre voie ?",
+  "Quel métier ou quel domaine t'attire aujourd'hui, et qu'as-tu fait pour le découvrir ?",
+  "Quelle qualité et quel défaut te décrivent le mieux ? Donne un exemple pour chacun.",
+  "Qu'est-ce qui te fait penser que tu réussiras dans un programme exigeant ?",
+];
+
+export const PARCOURS_QUESTIONS: Record<string, string> = {
+  experience: "Raconte une expérience qui t'a appris quelque chose sur toi.",
+  engagement: "Parle-moi d'un engagement (association, sport, bénévolat…) et de ce que tu y fais concrètement.",
+  reussite: "De quelle réussite es-tu le plus fier ou la plus fière, et pourquoi ?",
+  difficulte: "Décris une difficulté que tu as surmontée et ce que tu en as retenu.",
+  interet: "Quel sujet te passionne en dehors des cours ? Qu'est-ce que cela dit de toi ?",
+  projet: "Où te vois-tu dans cinq ans, et quelles étapes as-tu prévues ?",
+};

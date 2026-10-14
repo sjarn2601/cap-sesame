@@ -148,3 +148,33 @@ test("assistant encadré : indice gradué avec appuis, repli éditorial sans cl�
   await expect(page.getByText(/^Appuis : Question .+ version \d+/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Assistant : démarche" })).toBeVisible();
 });
+
+test("oraux : dossier, simulation écrite sans caméra et retour sur six critères @mobile", async ({ page }) => {
+  await register(page);
+  await page.goto("/oraux");
+  await expect(page.getByText(/École de démonstration/).first()).toBeVisible();
+  await page.getByRole("button", { name: "Ajouter un élément" }).click();
+  await page.selectOption("#d-cat", "engagement");
+  await page.fill("#d-title", "Trésorier du club de basket");
+  await page.fill("#d-details", "Budget du club, 40 adhérents.");
+  await page.getByRole("button", { name: "Enregistrer" }).click();
+  await expect(page.getByText("Trésorier du club de basket")).toBeVisible();
+  await page.getByRole("button", { name: "Construire ma présentation" }).click();
+  await expect(page.getByText(/Plan type construit à partir de ton dossier|Proposition de l.assistant/)).toBeVisible();
+
+  await page.selectOption("#sim-sheet", { index: 1 });
+  await page.getByRole("button", { name: "Lancer une simulation" }).click();
+  await expect(page).toHaveURL(/oraux\/simulation\//);
+  for (let i = 0; i < 4; i++) {
+    await page.fill("#oral-answer", "D'abord, je suis trésorier du club de basket depuis 2 ans, parce que j'aime gérer un projet. Ensuite, l'international m'attire.");
+    await page.getByRole("button", { name: "Question suivante" }).click();
+    await expect(page.getByText(`Question ${i + 2} sur 5`)).toBeVisible();
+  }
+  await page.fill("#oral-answer", "Enfin, je veux travailler dans une équipe internationale.");
+  await page.getByRole("button", { name: "Terminer et voir le retour" }).click();
+  await expect(page.getByRole("heading", { name: "Retour" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Précision linguistique" })).toBeVisible();
+  await expect(page.getByText(/ne prédit pas l.avis d.un jury/)).toBeVisible();
+  await page.getByRole("button", { name: "Supprimer la transcription" }).click();
+  await expect(page).toHaveURL(/\/oraux$/);
+});

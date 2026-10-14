@@ -409,3 +409,71 @@ describe("IA-01 / IA-02 : assistant encadré", () => {
     await expect(askAboutQuestion(db, b, { attemptId: p.id, questionVersionId: qv, mode: "explain" }, fake)).rejects.toThrow(/introuvable/);
   });
 });
+
+describe("ORA-01 : oraux", () => {
+  it("fiches par école, dossier sans invention, simulation, retour cité, suppression", async () => {
+    const oral = await import("@/server/oral");
+    const a = await newStudent("ora01@test.fr");
+    const sheets = await oral.listSheets(db, a);
+    expect(sheets.length).toBeGreaterThanOrEqual(2);
+    for (const sh of sheets) {
+      expect(sh.school && sh.program && sh.campus && sh.sessionCode && sh.lastVerifiedAt).toBeTruthy();
+      expect(sh.sources.length).toBeGreaterThan(0);
+    }
+
+    // Dossier : seuls les faits saisis, transmis sans e-mail.
+    await oral.saveDossierEntry(db, a, { category: "engagement", title: "Trésorier du club de basket", details: "Budget de 3 000 euros, contact ora01@test.fr" });
+    await oral.saveDossierEntry(db, a, { category: "difficulte", title: "Remontée en mathématiques", details: "De 8 à 14 en un trimestre." });
+    const seen: string[] = [];
+    const fake = (text: string) => ({ async complete(req: { prompt: string }) { seen.push(req.prompt); return { text, model: "fake", inputTokens: 500, outputTokens: 100, refused: false }; } });
+    const plan = await oral.structureDossier(db, a, fake("1. Accroche : le basket."));
+    expect(plan.source).toBe("ai");
+    expect(seen[0]).toContain("Trésorier du club de basket");
+    expect(seen[0]).not.toContain("ora01@test.fr");
+    const planOff = await oral.structureDossier(db, a, null);
+    expect(planOff.source).toBe("editorial");
+    expect(planOff.text).toContain("Trésorier du club de basket");
+
+    // Simulation sur une fiche : questions propres au programme.
+    const sim = await oral.startSimulation(db, a, { sheetId: sheets[0].id });
+    expect(sim.turns).toHaveLength(5);
+    expect(sim.turns.filter((t) => t.kind === "programme").map((t) => t.prompt)).toEqual(sheets[0].questions.slice(0, 2));
+    const answer = "D'abord, je suis trésorier du club de basket depuis 2 ans, parce que j'aime gérer un projet. Ensuite, l'international m'attire. Du coup j'ai choisi ce programme.";
+    await oral.saveTurn(db, a, sim.id, { turnId: sim.turns[0].id, answer, inputMode: "voice", edited: true });
+    await expect(oral.saveTurn(db, a, sim.id, { turnId: "00000000-0000-0000-0000-000000000000", answer: "x", inputMode: "text", edited: false })).rejects.toThrow();
+
+    // Retour sans assistant : six critères, citations tirées des réponses.
+    const fb = await oral.finishSimulation(db, a, sim.id, null);
+    expect(fb.source).toBe("editorial");
+    expect(fb.criteria.map((c) => c.key)).toEqual(["clarte", "structure", "exemples", "programme", "argumentation", "langue"]);
+    for (const c of fb.criteria) if (c.quote) expect(answer).toContain(c.quote);
+    expect(fb.criteria.find((c) => c.key === "langue")!.comment).toMatch(/du coup/);
+    expect(fb.criteria.find((c) => c.key === "programme")!.comment).toMatch(/international/);
+
+    // Retour de l'assistant : une citation inventée est écartée.
+    const aiJson = JSON.stringify({
+      criteria: ["clarte", "structure", "exemples", "programme", "argumentation", "langue"].map((key, i) => ({ key, level: 2, comment: `ok ${key}`, quote: i === 0 ? "phrase jamais dite" : i === 1 ? "je suis trésorier du club de basket" : null })),
+      summary: "Bonne base.",
+      next: ["Préparer un deuxième exemple."],
+    });
+    const fbAi = await oral.finishSimulation(db, a, sim.id, fake(aiJson));
+    expect(fbAi.source).toBe("ai");
+    expect(fbAi.criteria[0].quote).toBeNull();
+    expect(fbAi.criteria[1].quote).toBe("je suis trésorier du club de basket");
+    const broken = await oral.finishSimulation(db, a, sim.id, fake("pas du json"));
+    expect(broken.source).toBe("editorial");
+
+    // Export, isolement entre élèves, suppression.
+    const exp = await exportData(db, a);
+    expect(exp.oralDossier).toHaveLength(2);
+    expect(exp.oralSimulations).toHaveLength(1);
+    const b = await newStudent("ora01b@test.fr");
+    await expect(oral.getSimulation(db, b, sim.id)).rejects.toThrow(/introuvable/);
+    await expect(oral.deleteSimulation(db, b, sim.id)).rejects.toThrow(/introuvable/);
+    await oral.deleteSimulation(db, a, sim.id);
+    expect(await oral.listSimulations(db, a)).toHaveLength(0);
+    const entries = await oral.getDossier(db, a);
+    await oral.deleteDossierEntry(db, a, entries[0].id);
+    expect(await oral.getDossier(db, a)).toHaveLength(1);
+  });
+});

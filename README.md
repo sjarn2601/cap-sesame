@@ -93,7 +93,8 @@ Principes :
 | TEC-01 | Web responsive, utilisable à 360 px |
 | OFF-01 hors connexion (lot B) | Fait : appli installable, cours et séries libres téléchargés explicitement, réponses synchronisées sans doublon, données effacées à la déconnexion |
 | IA-01, IA-02 assistant encadré (lot B) | Fait : indice, démarche, solution expliquée ; explication de correction ; reformulation de cours ; appuis versionnés affichés ; quotas, budget, délai et repli éditorial ; rien en concours strict |
-| P1 et P2 (oraux avancés, collectif, projection pondérée…) | Hors lot A. La page Oraux donne une préparation de base. |
+| ORA-01 oraux (lot B) | Fait : fiches par école, programme, campus et session (démonstration : écoles fictives) ; dossier personnel ; simulations écrites ou dictées (micro sur accord, aucun audio conservé), transcription modifiable et supprimable ; retour sur six critères avec citations des réponses |
+| P1 et P2 restants (collectif, projection pondérée…) | Voir la suite du lot B. |
 
 ## Version mobile
 
@@ -133,9 +134,17 @@ SESAME_AI_TIMEOUT_MS=20000            # délai maximal
 - En cas de panne, de délai dépassé, de refus, de quota ou de budget atteint, l'élève reçoit la correction éditoriale. Chaque demande est journalisée (`ai_usage` : issue, jetons, coût, délai, sans le texte échangé) et résumée sur le tableau de bord d'administration.
 - Le repli côté serveur de l'API est activé : si le modèle principal est indisponible, l'API bascule sur un autre modèle.
 
+## Oraux
+
+- `/oraux` : fiches de programme, dossier personnel, lancement d'une simulation, historique des simulations.
+- Une simulation pose cinq questions (motivation, programme, parcours). La dictée utilise la reconnaissance vocale du navigateur, après accord explicite ; CAP SESAME n'enregistre aucun audio. Sans micro ni caméra, tout se fait par écrit.
+- Le retour couvre clarté, structure, exemples, connaissance du programme, argumentation et précision linguistique. Avec l'assistant, une citation qui ne figure pas mot pour mot dans les réponses est écartée ; sans assistant, une analyse automatique simple (longueur des phrases, connecteurs, exemples, mots du programme) est fournie. Aucun retour ne prédit l'avis d'un jury.
+- Le dossier et les transcriptions figurent dans l'export et se suppriment à tout moment.
+
 ## Limites connues
 
 - La banque de démonstration est petite : les simulations sont réduites et leur durée ajustée, ce qui est indiqué à l'élève.
 - Les données officielles (dates, coefficients, barèmes) sont celles du cahier des charges et sont marquées « à revérifier » dans la configuration.
 - Les envois d'e-mails (vérification, rappels) ne sont pas branchés.
+- Les fiches de programme fournies sont des exemples d'écoles fictives : les vraies fiches sont à rédiger école par école depuis les pages officielles.
 - Le jeu d'évaluation de l'assistant demandé par IA-02 (150 questions de référence, 50 demandes ambiguës, 30 attaques d'instructions, relecture humaine) reste à constituer.

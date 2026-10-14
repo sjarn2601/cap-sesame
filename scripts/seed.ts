@@ -6,7 +6,7 @@ import * as s from "@/db/schema";
 import { hashPassword } from "@/lib/password";
 import { qualityChecks } from "@/lib/editorial";
 import { DEMO_QUESTIONS } from "@/content/demo-questions";
-import { SUBJECTS, SKILLS, LESSONS, lessonSections, DOCUMENT_SET, NEWS, SESSION_2027 } from "@/content/demo-catalog";
+import { SUBJECTS, SKILLS, LESSONS, lessonSections, DOCUMENT_SET, NEWS, SESSION_2027, PROGRAM_SHEETS } from "@/content/demo-catalog";
 
 export const DEMO_TOTP_SECRET = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP";
 export const DEMO_PASSWORD = "demo-sesame-2027";
@@ -141,6 +141,7 @@ export async function seed(db = getDb()) {
     await db.insert(s.newsItems).values({ ...n, lastVerifiedAt: "2026-10-14", ...published });
   }
 
+  for (const sh of PROGRAM_SHEETS) await db.insert(s.programSheets).values({ ...sh, lastVerifiedAt: "2026-10-14", ...published });
   await db.insert(s.rightsRegistry).values([
     { contentType: "question", contentRef: "Banque de démonstration (toutes les questions)", holder: "CAP SESAME", licence: "Création originale", evidence: "Rédigé pour le projet, aucune reprise de contenu tiers." },
     { contentType: "document_set", contentRef: DOCUMENT_SET.id, holder: "CAP SESAME", licence: "Création originale, données fictives", evidence: "Texte, tableau et graphique créés pour la démonstration." },

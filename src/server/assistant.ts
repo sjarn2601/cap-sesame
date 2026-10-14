@@ -14,7 +14,8 @@ export type HelpLevel = 1 | 2 | 3;
 export const HELP_LEVELS: Record<HelpLevel, string> = { 1: "Indice", 2: "Démarche", 3: "Solution expliquée" };
 export const MAX_QUESTION_CHARS = 300;
 
-export type AiRequest = { system: string; prompt: string; maxTokens: number };
+/** `schema` : sortie JSON structurée (validée ensuite côté serveur). */
+export type AiRequest = { system: string; prompt: string; maxTokens: number; schema?: Record<string, unknown> };
 export type AiResult = { text: string; model: string; inputTokens: number; outputTokens: number; refused: boolean };
 /** Fournisseur injectable : les tests utilisent un faux fournisseur, la production l'API Claude. */
 export interface AiProvider {
@@ -60,7 +61,7 @@ export function anthropicProvider(): AiProvider | null {
           max_tokens: req.maxTokens,
           system: req.system,
           messages: [{ role: "user", content: req.prompt }],
-          output_config: { effort: "low" },
+          output_config: { effort: "low", ...(req.schema ? { format: { type: "json_schema" as const, schema: req.schema } } : {}) },
           // Repli côté serveur vers un autre modèle si le modèle principal est indisponible.
           betas: ["server-side-fallback-2026-07-01"],
           fallbacks: "default",
@@ -81,19 +82,19 @@ const getDefaultProvider = () => (defaultProvider === undefined ? (defaultProvid
 // ---------- Protection des données (IA-02) ----------
 
 /** Retire adresses e-mail, numéros de téléphone et liens de la question libre avant tout envoi. */
-export function redact(text: string) {
+export function redact(text: string, max = MAX_QUESTION_CHARS) {
   return text
     .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, "[e-mail retiré]")
     .replace(/(?:\+33\s?|0)[1-9](?:[\s.-]?\d{2}){4}/g, "[téléphone retiré]")
     .replace(/https?:\/\/\S+/g, "[lien retiré]")
-    .slice(0, MAX_QUESTION_CHARS);
+    .slice(0, max);
 }
 
 const escapeDoc = (s: string) => s.replace(/</g, "‹").replace(/>/g, "›");
-const doc = (tag: string, attrs: Record<string, string | number>, body: string) =>
+export const doc = (tag: string, attrs: Record<string, string | number>, body: string) =>
   `<${tag} ${Object.entries(attrs).map(([k, v]) => `${k}="${escapeDoc(String(v))}"`).join(" ")}>\n${escapeDoc(body)}\n</${tag}>`;
 
-const SYSTEM = `Tu es l'assistant pédagogique de CAP SESAME, une préparation indépendante au concours SESAME. Tu t'adresses à un lycéen, en français, en le tutoyant.
+export const SYSTEM = `Tu es l'assistant pédagogique de CAP SESAME, une préparation indépendante au concours SESAME. Tu t'adresses à un lycéen, en français, en le tutoyant.
 
 Règles :
 - Tu t'appuies uniquement sur les documents fournis (contenus validés par l'équipe, avec leur version). Le corrigé validé fait foi.
@@ -136,7 +137,10 @@ const NOTICES: Record<Exclude<Outcome, "ai">, string> = {
   fallback_refusal: "L'assistant n'a pas pu répondre à cette demande : voici l'aide rédigée par l'équipe.",
 };
 
-async function run(db: DB, actor: Actor, p: Prepared, provider: AiProvider | null): Promise<AssistantAnswer> {
+export type CallResult = { outcome: Outcome; result: AiResult | null; remaining: number | null; notice: string | null };
+
+/** Appel contrôlé : clé, quota par élève, budget global, délai, refus ; chaque demande est journalisée sans son contenu. */
+export async function callAi(db: DB, actor: Actor, mode: string, contentRef: string, request: AiRequest, provider: AiProvider | null): Promise<CallResult> {
   const cfg = aiConfig();
   const started = Date.now();
   const used = await usageToday(db, actor.id);
@@ -148,7 +152,7 @@ async function run(db: DB, actor: Actor, p: Prepared, provider: AiProvider | nul
   else {
     try {
       result = await Promise.race([
-        provider.complete(p.request),
+        provider.complete(request),
         new Promise<never>((_, rej) => setTimeout(() => rej(new Timeout()), cfg.timeoutMs + 1000)),
       ]);
       if (result.refused || !result.text) outcome = "fallback_refusal";
@@ -160,17 +164,22 @@ async function run(db: DB, actor: Actor, p: Prepared, provider: AiProvider | nul
   await db.insert(aiUsage).values({
     userId: actor.id,
     day: today(),
-    mode: p.mode,
+    mode,
     outcome,
     model: result?.model ?? null,
     inputTokens: result?.inputTokens ?? 0,
     outputTokens: result?.outputTokens ?? 0,
     costMicroUsd: result ? costMicroUsd(result.inputTokens, result.outputTokens) : 0,
     latencyMs: Date.now() - started,
-    contentRef: p.contentRef,
+    contentRef,
   });
   const counted = outcome !== "fallback_disabled" && outcome !== "fallback_quota" && outcome !== "fallback_budget";
   const remaining = provider ? Math.max(0, cfg.dailyRequests - used.requests - (counted ? 1 : 0)) : null;
+  return { outcome, result: outcome === "ai" ? result : null, remaining, notice: outcome === "ai" ? null : NOTICES[outcome] };
+}
+
+async function run(db: DB, actor: Actor, p: Prepared, provider: AiProvider | null): Promise<AssistantAnswer> {
+  const { outcome, result, remaining } = await callAi(db, actor, p.mode, p.contentRef, p.request, provider);
   if (outcome === "ai" && result) {
     const m = /^\s*INCERTITUDE\s*:\s*(.+)$/im.exec(result.text);
     const text = m ? result.text.replace(m[0], "").trim() : result.text;
@@ -187,7 +196,7 @@ async function run(db: DB, actor: Actor, p: Prepared, provider: AiProvider | nul
   return { text: p.editorial, source: "editorial", sources: p.sources, notice: NOTICES[outcome as Exclude<Outcome, "ai">], uncertain: false, level: p.level, remaining };
 }
 
-async function rulesDoc(db: DB, userId: string) {
+export async function rulesDoc(db: DB, userId: string) {
   const prof = await db.query.profiles.findFirst({ where: eq(profiles.userId, userId) });
   if (!prof) return { text: "", source: null as Source | null };
   const c = await db.query.examSessionConfigs.findFirst({

@@ -538,3 +538,54 @@ export const aiUsage = pgTable(
   },
   (t) => [index("ai_usage_day_idx").on(t.day), index("ai_usage_user_day_idx").on(t.userId, t.day)],
 );
+
+// ---------- Oraux (ORA-01) ----------
+
+/** Fiche de programme : propre à une école, un programme, un campus et une session ; jamais généralisée. */
+export const programSheets = pgTable("program_sheets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  school: text("school").notNull(),
+  program: text("program").notNull(),
+  campus: text("campus").notNull(),
+  sessionCode: text("session_code").notNull(),
+  oralFormat: text("oral_format").notNull(),
+  expectations: jsonb("expectations").$type<string[]>().notNull().default([]),
+  keywords: jsonb("keywords").$type<string[]>().notNull().default([]),
+  questions: jsonb("questions").$type<string[]>().notNull().default([]),
+  sources: jsonb("sources").$type<{ label: string; url: string }[]>().notNull(),
+  lastVerifiedAt: date("last_verified_at").notNull(),
+  ...editorial,
+});
+
+export type DossierCategory = "experience" | "engagement" | "reussite" | "difficulte" | "interet" | "projet";
+export type DossierEntry = { id: string; category: DossierCategory; title: string; details: string; updatedAt: string };
+
+/** Dossier personnel : seuls les faits saisis par l'élève, jamais complétés par l'assistant. */
+export const oralDossiers = pgTable("oral_dossiers", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  entries: jsonb("entries").$type<DossierEntry[]>().notNull().default([]),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type OralTurn = { id: string; prompt: string; kind: "motivation" | "programme" | "parcours"; answer: string; inputMode: "text" | "voice"; edited: boolean };
+export type OralCriterion = { key: string; label: string; level: 1 | 2 | 3; comment: string; quote: string | null };
+export type OralFeedback = { source: "ai" | "editorial"; criteria: OralCriterion[]; summary: string; next: string[]; notice: string | null; sources: { label: string; ref: string }[] };
+
+/** Simulation d'entretien : transcription modifiable et supprimable ; aucun audio conservé. */
+export const oralSessions = pgTable(
+  "oral_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sheetId: uuid("sheet_id").references(() => programSheets.id, { onDelete: "set null" }),
+    turns: jsonb("turns").$type<OralTurn[]>().notNull(),
+    feedback: jsonb("feedback").$type<OralFeedback | null>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [index("oral_sessions_user_idx").on(t.userId)],
+);
