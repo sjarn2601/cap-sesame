@@ -5,9 +5,8 @@ import { eq } from "drizzle-orm";
 import { getDb, closeDb } from "@/db";
 import * as s from "@/db/schema";
 import { hashPassword } from "@/lib/password";
-import { qualityChecks } from "@/lib/editorial";
-import { DEMO_QUESTIONS } from "@/content/demo-questions";
-import { SUBJECTS, SKILLS, LESSONS, lessonSections, DOCUMENT_SET, NEWS, SESSION_2027, PROGRAM_SHEETS, NEWS_EXTRA, LANGUAGE_EXERCISES } from "@/content/demo-catalog";
+import { DOCUMENT_SET, SESSION_2027, PROGRAM_SHEETS } from "@/content/demo-catalog";
+import { syncContent } from "@/server/contentSync";
 
 const LOCAL_TOTP_SECRET = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP";
 const LOCAL_PASSWORD = "demo-sesame-2027";
@@ -42,7 +41,8 @@ function demoSecrets() {
 export async function seed(db = getDb()) {
   const existing = await db.query.users.findFirst({ where: eq(s.users.email, "admin@demo.cap-sesame.fr") });
   if (existing) {
-    console.log("Base déjà initialisée : seed ignoré.");
+    console.log("Base déjà initialisée : comptes conservés, mise à jour du catalogue.");
+    await updateCatalog(db);
     return;
   }
   const secrets = demoSecrets();
@@ -71,43 +71,7 @@ export async function seed(db = getDb()) {
     publishedAt: new Date(),
   });
 
-  await db.insert(s.subjects).values(SUBJECTS.map((x) => ({ ...x, textDirection: (x as { textDirection?: string }).textDirection ?? "ltr" })));
-  await db.insert(s.skills).values(SKILLS.map((k, i) => ({ ...k, position: i })));
-
-  const published = { status: "published" as const, authorId: author.id, reviewerId: reviewer.id, rightsCleared: true, isDemo: true, origin: "human" as const, publishedAt: new Date(), version: 1 };
-
-  for (const l of LESSONS) {
-    await db.insert(s.lessonVersions).values({
-      lessonId: `L-${l.skillId}`,
-      skillId: l.skillId,
-      title: l.title,
-      objectives: l.objectives,
-      prerequisites: l.prerequisites ?? [],
-      sections: lessonSections(l),
-      flashcards: l.cards.map(([front, back, reversible]) => ({ front, back, reversible })),
-      ...published,
-    });
-  }
-
-  const [docSet] = await db.insert(s.documentSetVersions).values({ documentSetId: DOCUMENT_SET.id, title: DOCUMENT_SET.title, documents: DOCUMENT_SET.documents, ...published }).returning();
-
-  const stems: { questionId: string; stem: string }[] = [];
-  for (const q of DEMO_QUESTIONS) {
-    const issues = qualityChecks({ ...q, numericAnswer: q.numericAnswer ?? null }, stems).filter((i) => i.blocking);
-    if (issues.length) throw new Error(`${q.questionId} : ${issues.map((i) => i.message).join(", ")}`);
-    stems.push({ questionId: q.questionId, stem: q.stem });
-    const { documentSet, ...rest } = q;
-    const [row] = await db
-      .insert(s.questionVersions)
-      .values({ ...rest, numericAnswer: q.numericAnswer ?? null, numericTolerance: q.numericTolerance ?? null, reserved: q.reserved ?? false, documentSetVersionId: documentSet ? docSet.id : null, ...published })
-      .returning();
-    await db.insert(s.editorialEvents).values([
-      { contentType: "question", contentVersionId: row.id, fromStatus: "draft", toStatus: "in_review", actorId: author.id },
-      { contentType: "question", contentVersionId: row.id, fromStatus: "in_review", toStatus: "format_check", actorId: reviewer.id },
-      { contentType: "question", contentVersionId: row.id, fromStatus: "format_check", toStatus: "validated", actorId: reviewer.id },
-      { contentType: "question", contentVersionId: row.id, fromStatus: "validated", toStatus: "published", actorId: reviewer.id },
-    ]);
-  }
+  const report = await syncContent(db, { authorId: author.id, reviewerId: reviewer.id });
 
   // Deux brouillons pour illustrer la chaîne éditoriale, dont une proposition d'IA à relire.
   await db.insert(s.questionVersions).values([
@@ -166,12 +130,8 @@ export async function seed(db = getDb()) {
     },
   ]);
 
-  for (const n of NEWS) {
-    await db.insert(s.newsItems).values({ ...n, ...NEWS_EXTRA[n.title], lastVerifiedAt: "2026-10-14", ...published });
-  }
-
+  const published = { status: "published" as const, authorId: author.id, reviewerId: reviewer.id, rightsCleared: true, isDemo: true, origin: "human" as const, publishedAt: new Date(), version: 1 };
   for (const sh of PROGRAM_SHEETS) await db.insert(s.programSheets).values({ ...sh, lastVerifiedAt: "2026-10-14", ...published });
-  for (const x of LANGUAGE_EXERCISES) await db.insert(s.languageExercises).values({ ...x, ...published });
   await db.insert(s.rightsRegistry).values([
     { contentType: "question", contentRef: "Banque de démonstration (toutes les questions)", holder: "CAP SESAME", licence: "Création originale", evidence: "Rédigé pour le projet, aucune reprise de contenu tiers." },
     { contentType: "document_set", contentRef: DOCUMENT_SET.id, holder: "CAP SESAME", licence: "Création originale, données fictives", evidence: "Texte, tableau et graphique créés pour la démonstration." },
@@ -193,7 +153,15 @@ export async function seed(db = getDb()) {
   if (secrets.generatedTotp) {
     console.log(`Secret du second facteur des comptes du personnel (à ajouter dans une application d'authentification, une seule fois) : ${secrets.totpSecret}`);
   }
-  console.log(`Seed terminé : ${DEMO_QUESTIONS.length} questions publiées, ${LESSONS.length} cours, ${NEWS.length} fiches d'actualité.`);
+  console.log(`Seed terminé : ${report.questions} questions publiées, ${report.lessons} cours, ${report.documentSets} dossiers, ${report.news} fiches d'actualité.`);
+}
+
+async function updateCatalog(db: ReturnType<typeof getDb>) {
+  const author = await db.query.users.findFirst({ where: eq(s.users.email, "auteur@demo.cap-sesame.fr") });
+  const reviewer = await db.query.users.findFirst({ where: eq(s.users.email, "relecteur@demo.cap-sesame.fr") });
+  if (!author || !reviewer) throw new Error("Comptes éditoriaux introuvables : catalogue non mis à jour.");
+  const r = await syncContent(db, { authorId: author.id, reviewerId: reviewer.id });
+  console.log(`Catalogue à jour : ${r.lessons} cours, ${r.questions} questions, ${r.documentSets} dossiers, ${r.news} fiches, ${r.exercises} exercices de langue publiés ou mis à jour ; ${r.retired} anciennes versions retirées.`);
 }
 
 if (process.argv[1]?.endsWith("seed.ts")) {

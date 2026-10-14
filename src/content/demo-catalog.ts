@@ -9,7 +9,7 @@ export const SUBJECTS = [
   { code: "EN", name: "Anglais", position: 5, isLanguage: true, open: true },
   { code: "LV-ES", name: "Espagnol", position: 6, isLanguage: true, open: true },
   // Langues annoncées mais pas encore ouvertes : affichées comme telles avant inscription.
-  { code: "LV-DE", name: "Allemand", position: 7, isLanguage: true, open: false },
+  { code: "LV-DE", name: "Allemand", position: 7, isLanguage: true, open: true },
   { code: "LV-AR", name: "Arabe", position: 8, isLanguage: true, open: false, textDirection: "rtl" },
   { code: "LV-ZH", name: "Chinois", position: 9, isLanguage: true, open: false },
   { code: "LV-HE", name: "Hébreu", position: 10, isLanguage: true, open: false, textDirection: "rtl" },
@@ -50,7 +50,7 @@ export const SKILLS = [
   { id: "doc.synthese", subjectCode: "DOC", domain: "Méthode", name: "Construire une synthèse", synonyms: ["synthese", "plan", "idees principales"] },
 ];
 
-type LessonDef = { skillId: string; title: string; objectives: string[]; prerequisites?: string[]; regle: string; exemple: string; erreur: string; approfondir: string; cards: [string, string, boolean][] };
+import type { LessonDef } from "./bank/helpers";
 
 const L = (d: LessonDef) => d;
 
@@ -84,6 +84,8 @@ export const LESSONS: LessonDef[] = [
 export function lessonSections(d: LessonDef): LessonSection[] {
   return [
     { anchor: "regle", title: "L'essentiel", body: d.regle },
+    ...(d.formules ? [{ anchor: "formules", title: "À connaître par cœur", body: d.formules }] : []),
+    ...(d.methode ? [{ anchor: "methode", title: "Méthode", body: d.methode }] : []),
     { anchor: "exemple", title: "Exemple résolu", body: d.exemple },
     { anchor: "erreur", title: "Erreur fréquente", body: d.erreur },
     { anchor: "approfondir", title: "Pour aller plus loin", body: d.approfondir },

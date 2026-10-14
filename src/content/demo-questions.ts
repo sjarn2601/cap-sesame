@@ -1,61 +1,8 @@
 // Banque de démonstration : contenus originaux, signalés comme tels. Ils ne remplacent pas une banque relue.
 import { GENERATORS } from "@/lib/generators";
+import { q, type BankQuestion } from "./bank/helpers";
 
-export type DemoQuestion = {
-  questionId: string;
-  subjectCode: string;
-  skillIds: string[];
-  familyId: string;
-  difficulty: number;
-  format: "single" | "multiple" | "numeric";
-  stem: string;
-  options: { id: string; text: string; correct: boolean; justification: string }[];
-  numericAnswer?: number | null;
-  numericTolerance?: number | null;
-  explanation: string;
-  rule: string;
-  hints: string[];
-  timeSec: number;
-  references: string[];
-  lessonAnchor: string | null;
-  reserved?: boolean;
-  documentSet?: string;
-};
-
-type Opt = [text: string, correct: boolean, justification: string];
-
-function q(
-  questionId: string,
-  subjectCode: string,
-  skill: string,
-  familyId: string,
-  difficulty: number,
-  stem: string,
-  opts: Opt[],
-  explanation: string,
-  rule: string,
-  extra: Partial<DemoQuestion> = {},
-): DemoQuestion {
-  const ids = ["a", "b", "c", "d", "e"];
-  const correct = opts.filter((o) => o[1]).length;
-  return {
-    questionId,
-    subjectCode,
-    skillIds: [skill],
-    familyId,
-    difficulty,
-    format: correct > 1 ? "multiple" : "single",
-    stem,
-    options: opts.map(([text, c, justification], i) => ({ id: ids[i], text, correct: c, justification })),
-    explanation,
-    rule,
-    hints: [],
-    timeSec: 60,
-    references: [`Cours CAP SESAME : ${skill}`],
-    lessonAnchor: "regle",
-    ...extra,
-  };
-}
+export type DemoQuestion = BankQuestion;
 
 function generated(prefix: string, skill: string, familyId: string, gen: keyof typeof GENERATORS, count: number, difficulty: number, reservedIdx: number[] = []): DemoQuestion[] {
   const out: DemoQuestion[] = [];
