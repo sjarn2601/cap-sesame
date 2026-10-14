@@ -178,3 +178,30 @@ test("oraux : dossier, simulation écrite sans caméra et retour sur six critèr
   await page.getByRole("button", { name: "Supprimer la transcription" }).click();
   await expect(page).toHaveURL(/\/oraux$/);
 });
+
+test("langues, actualité et cartes : écoute avec transcription, frise, carte personnelle @mobile", async ({ page }) => {
+  await register(page);
+  await page.goto("/apprendre/langues");
+  await expect(page.getByText(/Format oral, distinct des épreuves écrites/)).toBeVisible();
+  const first = page.locator("article").first();
+  const toggle = first.getByRole("checkbox");
+  if (await toggle.isEnabled()) await toggle.check();
+  await expect(first.locator(".lesson-body")).toBeVisible();
+  await first.locator("label.option").first().click();
+  await expect(first.locator(".justif").first()).toBeVisible();
+
+  await page.goto("/apprendre/actualites?vue=frise");
+  await expect(page.getByRole("list", { name: "Frise chronologique" })).toBeVisible();
+  await expect(page.getByText("Adoption de l'accord de Paris sur le climat")).toBeVisible();
+
+  await page.goto("/entrainement/cartes");
+  await page.fill("#c-front", "to rely on");
+  await page.fill("#c-back", "compter sur");
+  await page.selectOption("#c-subject", "EN");
+  await page.getByRole("button", { name: "Créer la carte" }).click();
+  await expect(page.getByText(/Mes cartes \(1\)/)).toBeVisible();
+  await page.getByRole("button", { name: /Réviser mes cartes/ }).click();
+  await page.getByRole("button", { name: "Voir la réponse" }).click();
+  await page.getByRole("button", { name: "Je savais" }).click();
+  await expect(page.getByText("Révision terminée.")).toBeVisible();
+});

@@ -625,3 +625,23 @@ export const personalCards = pgTable(
   },
   (t) => [index("personal_cards_user_due_idx").on(t.userId, t.dueAt)],
 );
+
+/** Exercices oraux de langue (LAN-02) : écoute, lecture à voix haute, conversation. Distincts du format des écrits. */
+export const languageExercises = pgTable("language_exercises", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  exerciseId: text("exercise_id").notNull(),
+  subjectCode: text("subject_code")
+    .notNull()
+    .references(() => subjects.code),
+  kind: text("kind").$type<"listening" | "read_aloud" | "conversation">().notNull(),
+  title: text("title").notNull(),
+  level: text("level").notNull().default("B1"),
+  text: text("text").notNull(),
+  /** Transcription affichable sans gêner l'objectif : faux pour une écoute dont le but est la compréhension orale. */
+  transcriptByDefault: boolean("transcript_by_default").notNull().default(false),
+  question: text("question"),
+  options: jsonb("options").$type<QuestionOption[]>().notNull().default([]),
+  prompts: jsonb("prompts").$type<string[]>().notNull().default([]),
+  modelAnswer: text("model_answer"),
+  ...editorial,
+});

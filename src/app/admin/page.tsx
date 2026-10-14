@@ -6,6 +6,9 @@ import { requireStaff } from "@/server/next";
 import { STATUS_LABELS, type ContentStatus } from "@/lib/editorial";
 import { frDateTime } from "@/components/labels";
 import { aiConfig, usageSummary } from "@/server/assistant";
+import { languageReadiness } from "@/server/languages";
+import { AdminForm, AdminSubmit } from "@/components/AdminForm";
+import { languageOpenAction } from "@/app/actions/admin";
 
 export const metadata = { title: "Administration" };
 export const dynamic = "force-dynamic";
@@ -14,6 +17,7 @@ export default async function Page() {
   const actor = await requireStaff();
   const d = await adminDashboard(getDb(), actor);
   const ai = await usageSummary(getDb(), 7);
+  const langs = await languageReadiness(getDb(), actor);
   const aiCfg = aiConfig();
   const aiTotal = ai.reduce((t, r) => t + r.n, 0);
   const aiFallbacks = ai.filter((r) => r.outcome !== "ai").reduce((t, r) => t + r.n, 0);
@@ -63,6 +67,36 @@ export default async function Page() {
       <section className="card flat">
         <h2>Séances des 7 derniers jours</h2>
         <p>{Object.entries(d.attempts7).map(([k, n]) => `${KIND_LABELS[k] ?? k} : ${n}`).join(" · ") || "Aucune."}</p>
+      </section>
+
+      <section className="card flat stack">
+        <h2>Langues</h2>
+        <p className="small muted">Une langue s&apos;ouvre aux élèves seulement après un parcours de base complet (2 cours, 10 questions, une écoute et une lecture à voix haute publiées).</p>
+        <div className="table-wrap">
+          <table className="data">
+            <thead><tr><th>Langue</th><th>Cours</th><th>Questions</th><th>Oral</th><th>État</th><th></th></tr></thead>
+            <tbody>
+              {langs.map((l) => (
+                <tr key={l.code}>
+                  <td>{l.name}{l.dir === "rtl" ? " (droite à gauche)" : ""}</td>
+                  <td>{l.lessons}</td>
+                  <td>{l.questions}</td>
+                  <td>{l.listening} écoute(s), {l.readAloud} lecture(s)</td>
+                  <td>{l.open ? <span className="badge ok">Ouverte</span> : l.ready ? <span className="badge">Prête</span> : <span className="badge warn">Manque : {l.missing.join(", ")}</span>}</td>
+                  <td>
+                    {actor.role === "admin" && (l.open || l.ready) && (
+                      <AdminForm action={languageOpenAction}>
+                        <input type="hidden" name="code" value={l.code} />
+                        <input type="hidden" name="open" value={l.open ? "0" : "1"} />
+                        <AdminSubmit className="btn small">{l.open ? "Fermer" : "Ouvrir"}</AdminSubmit>
+                      </AdminForm>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className="card flat">

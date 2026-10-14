@@ -18,7 +18,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ q
     <div className="container stack">
       <div className="row between">
         <h1 style={{ margin: 0 }}>Apprendre</h1>
-        <Link href="/apprendre/actualites" className="btn small">Veille d&apos;actualité</Link>
+        <span className="row">
+          <Link href="/apprendre/langues" className="btn small">Langues à l&apos;oral</Link>
+          <Link href="/apprendre/actualites" className="btn small">Veille d&apos;actualité</Link>
+        </span>
       </div>
       <form role="search" className="row" action="/apprendre">
         <label htmlFor="q" className="sr-only">Rechercher une notion</label>

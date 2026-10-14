@@ -6,6 +6,7 @@ import { applyBatch, cancelBatch, createQuestionDraft, dryRunBatch, neutralizeQu
 import { approveConfig, createDraft } from "@/server/sessionConfig";
 import { setEstimationMode, type EstimationMode } from "@/server/estimation";
 import { correctNewsFact } from "@/server/news";
+import { setLanguageOpen } from "@/server/languages";
 import { attempt, getActor } from "@/server/next";
 import type { ContentStatus } from "@/lib/editorial";
 
@@ -127,4 +128,12 @@ export async function correctNewsAction(_: AdminState, form: FormData): Promise<
   revalidatePath("/admin/contenus");
   const q = r.data.suspendedQuestions;
   return { ok: true, message: `Nouvelle version créée en brouillon, ancienne fiche suspendue. ${q.length ? `Questions suspendues en attendant relecture : ${q.map((x) => x.questionId).join(", ")}.` : "Aucune question liée."}` };
+}
+
+export async function languageOpenAction(_: AdminState, form: FormData): Promise<AdminState> {
+  const open = form.get("open") === "1";
+  const r = await attempt(async () => setLanguageOpen(getDb(), await getActor(), String(form.get("code")), open));
+  if (!r.ok) return { message: r.message };
+  revalidatePath("/admin");
+  return { ok: true, message: `${r.data.name} ${open ? "ouverte" : "fermée"} aux élèves.` };
 }

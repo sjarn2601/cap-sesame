@@ -51,3 +51,15 @@ describe("Lecture à voix haute : comparaison tolérante", () => {
     expect(r.missed).toEqual(["biblioteca"]);
   });
 });
+
+describe("LAN-02 : écritures variées", () => {
+  it("accents, arabe, hébreu et chinois", async () => {
+    const { compareReading } = await import("@/lib/speech");
+    expect(compareReading("Él está en la estación", "el esta en la estacion").ratio).toBe(1);
+    expect(compareReading("مرحبا بكم في المكتبة", "مرحبا بكم").missed).toEqual(["في", "المكتبة"]);
+    expect(compareReading("שלום לכולם", "שלום לכולם").ratio).toBe(1);
+    const zh = compareReading("我喜欢学习", "我喜欢");
+    expect(zh.total).toBe(5);
+    expect(zh.missed).toEqual(["学", "习"]);
+  });
+});

@@ -65,13 +65,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ p
         )}
         <div className="table-wrap">
           <table className="data">
-            <thead><tr><th>Composante</th><th>Coefficient</th><th>Dernier concours blanc strict</th></tr></thead>
+            <thead><tr><th>Composante</th><th>Coefficient</th><th>Dernier blanc strict</th></tr></thead>
             <tbody>
               {proj.components.map((c) => (
                 <tr key={c.key}>
                   <td>{c.label}</td>
                   <td>{c.weight ?? "non publié"}</td>
-                  <td>{c.score20 !== null ? `${String(c.score20).replace(".", ",")} / 20 (${c.date})` : c.key === "DOSSIER" || c.key === "ORAL" ? "non mesuré par CAP SESAME" : "pas encore"}</td>
+                  <td>{c.score20 !== null ? `${String(c.score20).replace(".", ",")} / 20 (${c.date})` : c.key === "DOSSIER" || c.key === "ORAL" ? "non mesuré ici" : "pas encore"}</td>
                 </tr>
               ))}
             </tbody>
@@ -134,10 +134,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ p
             </details>
           </div>
         ))}
-      </section>
-      <section className="card flat">
-        <h2>Projection par programme</h2>
-        <p className="muted">Les coefficients des programmes pour 2027 ne sont pas encore sourcés : aucune note pondérée n&apos;est calculée, pour ne pas afficher un score inventé. Le dossier et l&apos;oral, qui comptent aussi, ne sont pas mesurés ici.</p>
       </section>
     </div>
   );

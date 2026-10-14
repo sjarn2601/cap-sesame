@@ -38,7 +38,8 @@ export function compareReading(expected: string, heard: string) {
       .normalize("NFD")
       .replace(/\p{M}/gu, "")
       .replace(/[^\p{L}\p{N}\s']/gu, " ")
-      .split(/\s+/)
+      // Écritures sans espaces entre les mots (chinois, japonais) : comparaison caractère par caractère.
+      .split(/\s+|(?<=[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}])|(?=[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}])/u)
       .filter(Boolean);
   const exp = norm(expected);
   const got = new Set(norm(heard));

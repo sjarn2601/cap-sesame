@@ -613,3 +613,24 @@ describe("RES-02 : projection pondérée et bilan", () => {
     expect(text).toMatch(/## Ce qui progresse[\s\S]*## Ce qui bloque[\s\S]*Pourcentages[\s\S]*## Ce qu'il faut faire ensuite/);
   });
 });
+
+describe("LAN-02 : langues à l'oral", () => {
+  it("exercices des seules langues de l'élève ; ouverture refusée sans parcours de base complet", async () => {
+    const { listLanguageExercises, setLanguageOpen, languageReadiness } = await import("@/server/languages");
+    const a = await newStudent("lan02@test.fr");
+    const langs = await listLanguageExercises(db, a);
+    expect(langs.map((l) => l.code)).toEqual(["EN", "LV-ES"]);
+    const en = langs.find((l) => l.code === "EN")!;
+    expect(new Set(en.exercises.map((x) => x.kind))).toEqual(new Set(["listening", "read_aloud", "conversation"]));
+    expect(en.exercises.find((x) => x.kind === "listening")!.transcriptByDefault).toBe(false);
+
+    const admin = await staff("admin@demo.cap-sesame.fr");
+    const ready = await languageReadiness(db, admin);
+    const ar = ready.find((l) => l.code === "LV-AR")!;
+    expect(ar.dir).toBe("rtl");
+    expect(ar.ready).toBe(false);
+    await expect(setLanguageOpen(db, admin, "LV-AR", true)).rejects.toThrow(/Parcours de base incomplet/);
+    const author = await staff("auteur@demo.cap-sesame.fr");
+    await expect(setLanguageOpen(db, author, "EN", false)).rejects.toThrow();
+  });
+});

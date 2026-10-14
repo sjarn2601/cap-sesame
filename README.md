@@ -1,6 +1,6 @@
 # CAP SESAME
 
-Application web de préparation au concours SESAME, construite à partir du cahier des charges « CAP SESAME » (31 pages). Cette version couvre le **lot A** : les exigences **P0** et les scénarios d'acceptation R01 à R08.
+Application web de préparation au concours SESAME, construite à partir du cahier des charges « CAP SESAME » (31 pages). Cette version couvre le **lot A** (exigences **P0**, scénarios R01 à R08) et le **lot B** (exigences **P1** listées ci-dessous), avec une version mobile installable.
 
 Le cahier des charges ne fixe pas de technologie précise (TEC-01 demande une interface web responsive, une API applicative et une base relationnelle). Choix retenus :
 
@@ -97,6 +97,7 @@ Principes :
 | REV-02 révision (lot B) | Fait : cartes personnelles à révision espacée (`/entrainement/cartes`), carnet regroupé par type d'erreur, export des fiches (texte ou CSV), écoute des cartes de langue par la synthèse vocale du navigateur |
 | ACT-02 actualité (lot B) | Fait : frise chronologique, regroupement par zone géographique, points de vue sourcés, quiz de la semaine lié aux fiches ; « Corriger un fait » suspend aussitôt la fiche et les questions liées (`news:<fiche>` dans les références) en attendant relecture, l'ancienne version est retirée à la publication de la nouvelle |
 | RES-02 projection et bilan (lot B) | Fait : projection par programme seulement avec coefficients publiés après double validation, composantes disponibles et manquantes (dont dossier et oral), rang relatif masqué sous 30 élèves comparables avec effectif, période et biais affichés ; bilan hebdomadaire téléchargeable et partageable volontairement |
+| LAN-02 langues à l'oral (lot B) | Fait : écoute (transcription selon l'objectif, mode accessibilité indiqué), lecture à voix haute comparée mot à mot (accents, écritures sans espaces, droite à gauche), conversation avec exemple de réponse ; une langue ne s'ouvre qu'avec un parcours de base complet |
 | ORA-01 oraux (lot B) | Fait : fiches par école, programme, campus et session (démonstration : écoles fictives) ; dossier personnel ; simulations écrites ou dictées (micro sur accord, aucun audio conservé), transcription modifiable et supprimable ; retour sur six critères avec citations des réponses |
 | P1 et P2 restants (collectif, projection pondérée…) | Voir la suite du lot B. |
 
