@@ -22,7 +22,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ v
   const zones = [...new Set(items.map((i) => i.zone))].sort();
   const long = { day: "numeric", month: "long", year: "numeric" } as const;
   return (
-    <div className="container stack" style={{ maxWidth: 860 }}>
+    <div className="container stack">
       <nav className="small"><Link href="/apprendre">Apprendre</Link> › Actualité</nav>
       <h1>Veille d&apos;actualité</h1>
       <p className="muted">

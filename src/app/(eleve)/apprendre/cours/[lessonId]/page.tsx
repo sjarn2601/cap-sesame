@@ -28,7 +28,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   if (tache) await markPlanTaskDone(db, actor.id, tache);
   const { lesson, skill, notes } = data;
   return (
-    <div className="container stack" style={{ maxWidth: 820 }}>
+    <div className="container stack">
       <nav className="small"><Link href="/apprendre">Apprendre</Link> › {skill?.domain}</nav>
       <h1>{lesson.title}</h1>
       <p className="small muted">

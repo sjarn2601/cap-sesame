@@ -20,7 +20,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ p
   const [proj, rank] = await Promise.all([getProjection(db, actor, programme), cohortPercentile(db, actor)]);
   const kinds = ORDER.filter((k) => series[k]?.length);
   return (
-    <div className="container stack" style={{ maxWidth: 960 }}>
+    <div className="container stack">
       <h1>Progrès</h1>
 
       <section className="card stack">

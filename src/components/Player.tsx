@@ -479,7 +479,7 @@ export function Player({ initial }: { initial: AttemptView }) {
           </div>
         </>
       ) : (
-        <div className="card" style={{ maxWidth: 820 }}>{questionPane}</div>
+        <div className="card">{questionPane}</div>
       )}
     </div>
   );

@@ -9,7 +9,7 @@ const ROWS = [
 
 export default function Page() {
   return (
-    <div className="container stack" style={{ maxWidth: 860 }}>
+    <div className="container stack">
       <h1>Tes données personnelles</h1>
       <p className="notice warn">
         <strong>Version de démonstration</strong>

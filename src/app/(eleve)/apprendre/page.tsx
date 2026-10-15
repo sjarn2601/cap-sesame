@@ -16,7 +16,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ q
   const current = matiere ? catalog.find((s) => s.code === matiere) : null;
   const dot = (status?: string) => (status === "probable" ? "ok" : status === "in_progress" ? "warn" : status === "fragile" ? "ko" : "");
   return (
-    <div className="container stack" style={{ maxWidth: 820 }}>
+    <div className="container stack">
       <h1 style={{ margin: 0 }}>Apprendre</h1>
       <form role="search" className="row" action="/apprendre" style={{ flexWrap: "nowrap" }}>
         <label htmlFor="q" className="sr-only">Rechercher une notion</label>

@@ -13,7 +13,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ l
   const langs = await listLanguageExercises(getDb(), actor);
   const current = langs.find((l) => l.code === langue) ?? langs[0];
   return (
-    <div className="container stack" style={{ maxWidth: 820 }}>
+    <div className="container stack">
       <nav className="small"><Link href="/apprendre">Apprendre</Link> › Langues à l&apos;oral</nav>
       <h1>Langues à l&apos;oral</h1>
       <p className="notice">Format oral, distinct des épreuves écrites du concours (questionnaires à choix multiples). Il prépare la compréhension et l&apos;expression utiles aux entretiens.</p>

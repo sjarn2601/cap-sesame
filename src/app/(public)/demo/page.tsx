@@ -12,7 +12,7 @@ export default async function Page() {
   const rows = await getDb().select().from(questionVersions).where(inArray(questionVersions.questionId, DEMO_IDS));
   const qs = DEMO_IDS.map((id) => rows.filter((r) => r.questionId === id && r.status === "published").sort((a, b) => b.version - a.version)[0]).filter(Boolean);
   return (
-    <div className="container" style={{ maxWidth: 760 }}>
+    <div className="container">
       <h1>Essayer sans compte</h1>
       <p className="muted">Quatre questions pour voir comment fonctionnent les corrections. Rien n&apos;est enregistré.</p>
       <DemoPlayer

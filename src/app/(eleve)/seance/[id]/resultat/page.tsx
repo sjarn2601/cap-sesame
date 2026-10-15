@@ -37,7 +37,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const familiar = r.items.filter((i) => i.familiar).length;
 
   return (
-    <div className="container stack" style={{ maxWidth: 900 }}>
+    <div className="container stack">
       <div>
         <p className="eyebrow">{KIND_LABELS[r.kind]}{r.status === "expired" ? " · temps écoulé" : ""}</p>
         <h1>{r.title}</h1>

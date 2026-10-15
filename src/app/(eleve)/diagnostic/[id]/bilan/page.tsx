@@ -23,7 +23,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   });
   if (!r.complete) redirect(`/seance/${id}`);
   return (
-    <div className="container stack" style={{ maxWidth: 860 }}>
+    <div className="container stack">
       <h1>Bilan du diagnostic</h1>
       <p className="notice">
         <strong>Estimation provisoire</strong>

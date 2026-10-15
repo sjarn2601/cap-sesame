@@ -30,7 +30,7 @@ const TEMPLATE = {
 export default async function Page() {
   await requireStaff();
   return (
-    <div className="stack" style={{ maxWidth: 900 }}>
+    <div className="stack">
       <h1>Nouvelle question</h1>
       <p className="muted">La question est créée en brouillon. Pour une nouvelle version d&apos;une question existante, réutilisez son identifiant : l&apos;ancienne version reste attachée aux tentatives passées.</p>
       <AdminForm action={createQuestionAction} className="card stack">

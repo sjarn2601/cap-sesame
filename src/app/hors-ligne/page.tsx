@@ -16,7 +16,7 @@ export default function Page() {
         </div>
       </header>
       <main id="contenu">
-        <div className="container stack" style={{ maxWidth: 820 }}>
+        <div className="container stack">
           <div>
             <p className="eyebrow">Mode hors connexion</p>
             <h1>Mes contenus téléchargés</h1>

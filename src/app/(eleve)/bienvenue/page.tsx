@@ -11,7 +11,7 @@ export default async function Page() {
   const actor = await requireStudent();
   const profile = await getProfile(getDb(), actor);
   return (
-    <div className="container stack" style={{ maxWidth: 760 }}>
+    <div className="container stack">
       <h1>Bienvenue !</h1>
       <p className="muted">Ces informations sont facultatives mais rendent ton plan réaliste. Tu pourras les modifier à tout moment.</p>
       <ActionForm action={saveProfileAction} className="card stack">

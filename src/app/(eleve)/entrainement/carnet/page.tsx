@@ -16,7 +16,7 @@ export default async function Page() {
   const open = log.items.filter((i) => i.status === "open");
   const closed = log.items.filter((i) => i.status === "closed");
   return (
-    <div className="container stack" style={{ maxWidth: 900 }}>
+    <div className="container stack">
       <nav className="small"><Link href="/entrainement">S&apos;entraîner</Link> › Carnet d&apos;erreurs</nav>
       <h1>Carnet d&apos;erreurs</h1>
       <p className="muted">

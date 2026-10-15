@@ -22,7 +22,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   });
   const { q, issues, history, versions, responsesCount } = data;
   return (
-    <div className="stack" style={{ maxWidth: 960 }}>
+    <div className="stack">
       <nav className="small"><Link href="/admin/questions">Questions</Link> › {q.questionId}</nav>
       <div className="row between">
         <h1 style={{ margin: 0 }}>{q.questionId} · v{q.version}</h1>

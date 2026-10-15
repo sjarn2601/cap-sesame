@@ -43,7 +43,7 @@ export default async function Page() {
   const greeting = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Paris" }).format(new Date());
 
   return (
-    <div className="container stack" style={{ maxWidth: 820 }}>
+    <div className="container stack">
       <div>
         <p className="eyebrow">{greeting}</p>
         <h1>Aujourd&apos;hui</h1>

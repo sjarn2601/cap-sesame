@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function Page() {
   const langs = (await getDb().select().from(subjects).orderBy(asc(subjects.position))).filter((s) => s.code.startsWith("LV-"));
   return (
-    <div className="container" style={{ maxWidth: 560 }}>
+    <div className="container">
       <div className="card stack">
         <h1>Créer un compte</h1>
         <p className="muted">Quatre informations suffisent. Tu compléteras ton profil ensuite, si tu le souhaites.</p>

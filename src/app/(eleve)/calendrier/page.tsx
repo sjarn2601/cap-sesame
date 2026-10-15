@@ -28,7 +28,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ a
   const today = new Date().toISOString().slice(0, 10);
 
   return (
-    <div className="container stack" style={{ maxWidth: 900 }}>
+    <div className="container stack">
       <div className="row between">
         <h1 style={{ margin: 0 }}>Calendrier</h1>
         <div className="row">

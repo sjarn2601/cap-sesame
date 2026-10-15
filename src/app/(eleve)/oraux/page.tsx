@@ -18,7 +18,7 @@ export default async function Page() {
   const s2 = config.body.sources.find((s) => s.id === "S2");
   const fmt = { day: "numeric", month: "long", year: "numeric" } as const;
   return (
-    <div className="container stack" style={{ maxWidth: 820 }}>
+    <div className="container stack">
       <h1>Oraux</h1>
       <section className="card stack">
         <p>

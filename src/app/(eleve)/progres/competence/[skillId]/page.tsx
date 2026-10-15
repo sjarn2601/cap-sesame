@@ -17,7 +17,7 @@ export default async function Page({ params }: { params: Promise<{ skillId: stri
     throw e;
   });
   return (
-    <div className="container stack" style={{ maxWidth: 860 }}>
+    <div className="container stack">
       <nav className="small"><Link href="/progres">Progrès</Link> › {d.skill.name}</nav>
       <h1>{d.skill.name}</h1>
       <section className="card">

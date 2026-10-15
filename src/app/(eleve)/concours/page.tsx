@@ -27,7 +27,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
   const factor = profile.timeExtensionFactor;
 
   return (
-    <div className="container stack" style={{ maxWidth: 960 }}>
+    <div className="container stack">
       <h1>Concours blancs</h1>
       <p className="muted" style={{ marginTop: 0 }}>
         Écrits le {frDate(config.body.examDate, { day: "numeric", month: "long", year: "numeric" })}, à distance. Choisis une épreuve, ou le concours complet.

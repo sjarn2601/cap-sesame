@@ -5,7 +5,7 @@ export const metadata = { title: "Connexion" };
 
 export default function Page() {
   return (
-    <div className="container" style={{ maxWidth: 480 }}>
+    <div className="container">
       <div className="card stack">
         <h1>Connexion</h1>
         <LoginForm />

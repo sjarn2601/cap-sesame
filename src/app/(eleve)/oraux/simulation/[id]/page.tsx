@@ -17,7 +17,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     throw e;
   });
   return (
-    <div className="container stack player-page" style={{ maxWidth: 820 }}>
+    <div className="container stack player-page">
       <nav className="small"><Link href="/oraux">Oraux</Link> › Simulation</nav>
       <h1>Simulation d&apos;entretien</h1>
       <p className="small muted">{sim.sheet ? `${sim.sheet.school} · ${sim.sheet.program} · ${sim.sheet.campus}` : "Questions générales"}</p>

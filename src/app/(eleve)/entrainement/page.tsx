@@ -17,7 +17,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ n
   const [catalog, log] = await Promise.all([getCatalog(db, actor), getReviewLog(db, actor)]);
   const practicable = catalog.filter((s) => s.code !== "DOC");
   return (
-    <div className="container stack" style={{ maxWidth: 900 }}>
+    <div className="container stack">
       <h1>S&apos;entraîner</h1>
 
       <ActionForm action={startPracticeAction} className="card stack">

@@ -7,7 +7,7 @@ export const metadata = { title: "Import par lots" };
 export default async function Page() {
   await requireStaff();
   return (
-    <div className="stack" style={{ maxWidth: 1000 }}>
+    <div className="stack">
       <h1>Import par lots</h1>
       <p className="muted">Collez un tableau JSON de questions (même schéma que la création unitaire). La validation à blanc n&apos;écrit rien. Un lot invalide n&apos;est jamais appliqué partiellement sans votre accord explicite, et les questions importées entrent en brouillon : le catalogue public n&apos;est pas touché.</p>
       <AdminForm action={batchAction} className="card stack" showReport>

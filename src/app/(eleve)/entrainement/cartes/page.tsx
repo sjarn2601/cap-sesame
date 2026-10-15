@@ -16,7 +16,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ r
   const { cards } = await listCards(db, actor);
   const subs = (await db.select().from(subjects).orderBy(asc(subjects.position))).filter((s) => s.open);
   return (
-    <div className="container stack" style={{ maxWidth: 820 }}>
+    <div className="container stack">
       <nav className="small"><Link href="/entrainement">S&apos;entraîner</Link> › Mes cartes</nav>
       <h1>Mes cartes</h1>
       <p className="muted">Tes propres cartes mémoire, revues à J+1, 3, 7 puis 21. En langue, chaque carte peut être écoutée.</p>

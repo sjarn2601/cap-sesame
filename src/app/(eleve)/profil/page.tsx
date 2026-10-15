@@ -21,7 +21,7 @@ export default async function Page() {
   const sessions = await listPublishedSessions(db);
   const blocked = [...profile.blockedPeriods, { from: "", to: "", label: "" }];
   return (
-    <div className="container stack" style={{ maxWidth: 820 }}>
+    <div className="container stack">
       <h1>Profil</h1>
       <p className="muted">{actor.email}</p>
       <InstallApp />

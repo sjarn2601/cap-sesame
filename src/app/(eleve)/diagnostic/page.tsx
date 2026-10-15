@@ -16,7 +16,7 @@ export default async function Page() {
   const catalog = await getCatalog(db, actor);
   const done = !!profile.diagnosticState.completedAt;
   return (
-    <div className="container stack" style={{ maxWidth: 760 }}>
+    <div className="container stack">
       <h1>Diagnostic</h1>
       <section className="card stack">
         <h2>{done ? "Refaire un diagnostic d'orientation" : "Diagnostic d'orientation"}</h2>

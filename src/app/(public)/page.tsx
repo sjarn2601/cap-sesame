@@ -14,7 +14,7 @@ export default async function Home() {
       <section className="card hero-action" style={{ padding: 28 }}>
         <p className="eyebrow">Concours SESAME, session 2027</p>
         <h1>Chaque jour, tu sais quoi travailler, combien de temps et pourquoi.</h1>
-        <p className="muted" style={{ maxWidth: 680 }}>
+        <p className="muted">
           Un diagnostic court, des séances adaptées à ton emploi du temps, des corrections qui expliquent chaque option, un carnet d&apos;erreurs qui revient au bon moment et des
           concours blancs chronométrés.
         </p>

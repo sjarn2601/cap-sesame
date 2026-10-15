@@ -2,7 +2,7 @@ export const metadata = { title: "Aide" };
 
 export default function Page() {
   return (
-    <div className="container stack" style={{ maxWidth: 860 }}>
+    <div className="container stack">
       <h1>Aide</h1>
       <section className="card flat">
         <h2>Raccourcis clavier pendant une séance</h2>

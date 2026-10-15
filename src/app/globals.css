@@ -1063,3 +1063,17 @@ legend {
   padding: 0;
   margin-bottom: 8px;
 }
+
+/* Pleine largeur : le contenu occupe tout l'écran disponible. */
+.container,
+.container.wide {
+  max-width: none;
+}
+@media (min-width: 900px) {
+  .container {
+    padding: 0 32px;
+  }
+}
+.grid > .field + .field {
+  margin-top: 0;
+}
