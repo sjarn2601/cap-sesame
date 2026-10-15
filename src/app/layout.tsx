@@ -18,8 +18,8 @@ export const viewport: Viewport = {
   // Plein écran sur téléphone : le contenu tient compte des encoches (safe-area).
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#2346c7" },
-    { media: "(prefers-color-scheme: dark)", color: "#0f1320" },
+    { media: "(prefers-color-scheme: light)", color: "#161f1b" },
+    { media: "(prefers-color-scheme: dark)", color: "#0e1512" },
   ],
 };
 
