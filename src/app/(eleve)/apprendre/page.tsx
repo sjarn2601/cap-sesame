@@ -45,10 +45,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ q
       {!current ? (
         <>
           <nav className="tiles" aria-label="Matières">
-            {catalog.map((s) => {
+            {catalog.map((s, i) => {
               const worked = s.skills.filter((k) => k.mastery).length;
               return (
-                <Link key={s.code} href={`/apprendre?matiere=${s.code}`} className="tile">
+                <Link key={s.code} href={`/apprendre?matiere=${s.code}`} className="tile" data-tone={s.code}>
+                  <span className="tile-top" aria-hidden="true">
+                    <span className="tile-num">{String(i + 1).padStart(2, "0")}</span>
+                    <span className="monogram">{s.code.replace("LV-", "").slice(0, 3)}</span>
+                  </span>
                   <strong>{s.name}</strong>
                   <span className="muted small">{s.skills.filter((k) => k.lesson).length} cours{worked ? ` · ${worked} travaillé(s)` : ""}</span>
                   <div className="meter" aria-hidden="true"><span style={{ width: `${s.skills.length ? Math.round((worked / s.skills.length) * 100) : 0}%` }} /></div>
