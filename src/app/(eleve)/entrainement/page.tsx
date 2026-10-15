@@ -20,28 +20,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ n
     <div className="container stack" style={{ maxWidth: 900 }}>
       <h1>S&apos;entraîner</h1>
 
-      <section className="card stack">
-        <div className="row between">
-          <div>
-            <h2 style={{ marginBottom: 4 }}>Révisions du carnet d&apos;erreurs</h2>
-            <p className="muted" style={{ margin: 0 }}>
-              {log.dueToday ? `${log.dueToday} révision(s) à faire aujourd'hui, dans un contexte nouveau.` : "Aucune révision due aujourd'hui."}
-              {log.backlog > 0 && ` ${log.backlog} autre(s) étalée(s) sur les prochains jours.`}
-            </p>
-          </div>
-          <Link href="/entrainement/carnet" className="btn small ghost">Voir le carnet</Link>
-          <Link href="/entrainement/cartes" className="btn small ghost">Mes cartes</Link>
-        </div>
-        {log.dueToday > 0 && (
-          <ActionForm action={startReviewAction}>
-            <Submit pendingText="Préparation…">Lancer les révisions</Submit>
-          </ActionForm>
-        )}
-      </section>
-
       <ActionForm action={startPracticeAction} className="card stack">
         <h2>Série libre</h2>
-        <p className="muted">Les questions sont choisies selon ta maîtrise, ce que tu as déjà vu et un équilibre entre points faibles et consolidation.</p>
+        <p className="muted small" style={{ marginTop: -6 }}>Questions choisies selon ta maîtrise : points faibles et consolidation.</p>
         <div className="grid two">
           <div className="field">
             <label htmlFor="subject">Matière</label>
@@ -63,20 +44,39 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ n
           </div>
         </div>
         <fieldset>
-          <legend>Durée</legend>
-          <div className="radio-row">
-            <label className="radio-pill"><input type="radio" name="size" value="short" /><span>Courte · 5 questions</span></label>
-            <label className="radio-pill"><input type="radio" name="size" value="normal" defaultChecked /><span>Normale · 10</span></label>
-            <label className="radio-pill"><input type="radio" name="size" value="long" /><span>Longue · 15</span></label>
+          <legend className="small muted">Durée</legend>
+          <div className="radio-row segmented" style={{ display: "inline-flex" }}>
+            <label className="radio-pill"><input type="radio" name="size" value="short" /><span>5 questions</span></label>
+            <label className="radio-pill"><input type="radio" name="size" value="normal" defaultChecked /><span>10</span></label>
+            <label className="radio-pill"><input type="radio" name="size" value="long" /><span>15</span></label>
           </div>
         </fieldset>
         <div><Submit pendingText="Préparation…">Commencer la série</Submit></div>
       </ActionForm>
 
+      <section className="card row between">
+        <div>
+          <h2 style={{ marginBottom: 2 }}>Carnet d&apos;erreurs</h2>
+          <p className="muted small" style={{ margin: 0 }}>
+            {log.dueToday ? `${log.dueToday} révision(s) à faire aujourd'hui.` : "Aucune révision due aujourd'hui."}
+            {log.backlog > 0 && ` ${log.backlog} autre(s) ensuite.`}
+          </p>
+        </div>
+        <div className="row">
+          {log.dueToday > 0 && (
+            <ActionForm action={startReviewAction}>
+              <Submit className="btn" pendingText="Préparation…">Réviser</Submit>
+            </ActionForm>
+          )}
+          <Link href="/entrainement/carnet" className="btn small ghost">Carnet</Link>
+          <Link href="/entrainement/cartes" className="btn small ghost">Mes cartes</Link>
+        </div>
+      </section>
+
       {catalog.some((s) => s.code === "DOC") && (
         <ActionForm action={startExamAction} className="card stack">
-          <h2>Analyse documentaire en mode apprentissage</h2>
-          <p className="muted">Un dossier complet, sans chronomètre imposé, avec surlignage et correction après chaque réponse. Conseillé sur ordinateur.</p>
+          <h2>Analyse documentaire guidée</h2>
+          <p className="muted small" style={{ marginTop: -6 }}>Un dossier complet, sans chronomètre, corrigé question par question. Conseillé sur ordinateur.</p>
           <input type="hidden" name="subject" value="DOC" />
           <input type="hidden" name="mode" value="pedagogic" />
           <div><Submit className="btn" pendingText="Préparation…">Ouvrir un dossier</Submit></div>

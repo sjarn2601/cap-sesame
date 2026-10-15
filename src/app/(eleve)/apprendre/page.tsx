@@ -13,63 +13,76 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ q
   const db = getDb();
   const catalog = await getCatalog(db, actor);
   const results = q ? await searchCatalog(db, q) : null;
-  const shown = matiere ? catalog.filter((s) => s.code === matiere) : catalog;
+  const current = matiere ? catalog.find((s) => s.code === matiere) : null;
+  const dot = (status?: string) => (status === "probable" ? "ok" : status === "in_progress" ? "warn" : status === "fragile" ? "ko" : "");
   return (
-    <div className="container stack">
-      <div className="row between">
-        <h1 style={{ margin: 0 }}>Apprendre</h1>
-        <span className="row">
-          <Link href="/apprendre/langues" className="btn small">Langues à l&apos;oral</Link>
-          <Link href="/apprendre/actualites" className="btn small">Veille d&apos;actualité</Link>
-        </span>
-      </div>
-      <form role="search" className="row" action="/apprendre">
+    <div className="container stack" style={{ maxWidth: 820 }}>
+      <h1 style={{ margin: 0 }}>Apprendre</h1>
+      <form role="search" className="row" action="/apprendre" style={{ flexWrap: "nowrap" }}>
         <label htmlFor="q" className="sr-only">Rechercher une notion</label>
-        <input id="q" name="q" type="search" placeholder="Rechercher une notion : pourcentages, subjonctif, ser estar…" defaultValue={q} style={{ flex: 1, minWidth: 200 }} />
-        <button className="btn primary">Rechercher</button>
+        <input id="q" name="q" type="search" placeholder="Rechercher une notion…" defaultValue={q} style={{ flex: 1, minWidth: 0 }} />
+        <button className="btn">Rechercher</button>
       </form>
       {results && (
-        <section className="card flat" aria-live="polite">
+        <section className="stack" aria-live="polite">
           <h2>{results.length} résultat(s) pour « {q} »</h2>
           {results.length ? (
-            <ul className="list-plain">
+            <ul className="rows">
               {results.map((r) => (
                 <li key={r.skill.id}>
-                  <Link href={`/apprendre/cours/${r.lesson!.lessonId}`}>{r.lesson!.title}</Link> <span className="muted small">· {r.skill.domain}</span>
+                  <span className="grow">
+                    <Link className="title" href={`/apprendre/cours/${r.lesson!.lessonId}`}>{r.lesson!.title}</Link>
+                    <span className="muted small"> · {r.skill.domain}</span>
+                  </span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="muted">Aucune notion trouvée. Essaie un synonyme ou parcours les matières ci-dessous.</p>
+            <p className="muted">Aucune notion trouvée. Essaie un synonyme ou parcours les matières.</p>
           )}
         </section>
       )}
-      <nav className="row" aria-label="Filtrer par matière">
-        <Link href="/apprendre" className={`btn small ${!matiere ? "primary" : ""}`}>Toutes</Link>
-        {catalog.map((s) => (
-          <Link key={s.code} href={`/apprendre?matiere=${s.code}`} className={`btn small ${matiere === s.code ? "primary" : ""}`}>{s.name}</Link>
-        ))}
-      </nav>
-      {shown.map((s) => (
-        <section key={s.code} className="stack">
-          <h2>{s.name}</h2>
-          <div className="grid">
-            {s.skills.map((k) => (
-              <article key={k.id} className="card flat stack">
-                <div>
-                  <p className="eyebrow">{k.domain}</p>
-                  <h3>{k.name}</h3>
-                  <span className="badge">{k.mastery ? MASTERY_LABELS[k.mastery.status as MasteryStatus] : "Pas encore travaillé"}</span>
-                </div>
-                <div className="row">
-                  {k.lesson && <Link className="btn small" href={`/apprendre/cours/${k.lesson.lessonId}`}>Cours et fiche</Link>}
-                  {k.questionCount > 0 && <Link className="btn small ghost" href={`/entrainement?notion=${k.id}`}>S&apos;entraîner</Link>}
-                </div>
-              </article>
+      {!current ? (
+        <>
+          <nav className="tiles" aria-label="Matières">
+            {catalog.map((s) => {
+              const worked = s.skills.filter((k) => k.mastery).length;
+              return (
+                <Link key={s.code} href={`/apprendre?matiere=${s.code}`} className="tile">
+                  <strong>{s.name}</strong>
+                  <span className="muted small">{s.skills.filter((k) => k.lesson).length} cours{worked ? ` · ${worked} travaillé(s)` : ""}</span>
+                  <div className="meter" aria-hidden="true"><span style={{ width: `${s.skills.length ? Math.round((worked / s.skills.length) * 100) : 0}%` }} /></div>
+                </Link>
+              );
+            })}
+          </nav>
+          <p className="small muted">
+            Aussi : <Link href="/apprendre/langues">langues à l&apos;oral</Link> · <Link href="/apprendre/actualites">veille d&apos;actualité</Link>
+          </p>
+        </>
+      ) : (
+        <section className="stack">
+          <nav className="chips" aria-label="Filtrer par matière">
+            <Link href="/apprendre" className="btn small">Toutes</Link>
+            {catalog.map((s) => (
+              <Link key={s.code} href={`/apprendre?matiere=${s.code}`} className={`btn small ${matiere === s.code ? "primary" : ""}`} aria-current={matiere === s.code ? "page" : undefined}>{s.name}</Link>
             ))}
-          </div>
+          </nav>
+          <h2 style={{ margin: 0 }}>{current.name}</h2>
+          <ul className="rows">
+            {current.skills.map((k) => (
+              <li key={k.id}>
+                <span className={`dot ${dot(k.mastery?.status)}`} title={k.mastery ? MASTERY_LABELS[k.mastery.status as MasteryStatus] : "Pas encore travaillé"} />
+                <span className="grow">
+                  {k.lesson ? <Link className="title" href={`/apprendre/cours/${k.lesson.lessonId}`}>{k.name}</Link> : <strong>{k.name}</strong>}
+                  <span className="muted small" style={{ display: "block" }}>{k.domain} · {k.mastery ? MASTERY_LABELS[k.mastery.status as MasteryStatus] : "pas encore travaillé"}</span>
+                </span>
+                {k.questionCount > 0 && <Link className="btn small ghost" href={`/entrainement?notion=${k.id}`} aria-label={`S'entraîner : ${k.name}`}>S&apos;entraîner</Link>}
+              </li>
+            ))}
+          </ul>
         </section>
-      ))}
+      )}
     </div>
   );
 }

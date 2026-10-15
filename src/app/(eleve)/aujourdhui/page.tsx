@@ -89,7 +89,7 @@ export default async function Page() {
             )}
             {!diagRunning && (
               <form action={deferDiagnosticAction}>
-                <button className="btn">Plus tard, commencer directement</button>
+                <button className="btn ghost">Plus tard</button>
               </form>
             )}
           </div>
@@ -143,19 +143,17 @@ export default async function Page() {
 
       <InstallApp compact />
 
-      <section className="grid">
-        <div className="card flat">
-          <p className="eyebrow">Progression du jour</p>
-          <p className="big-number">{today.doneToday} / {today.totalToday}</p>
-          <p className="muted small">activités terminées · {today.minutesToday} min prévues</p>
-          <Link href="/calendrier" className="small">Voir la semaine</Link>
-        </div>
-        <div className="card flat">
-          <p className="eyebrow">Carnet d&apos;erreurs</p>
-          <p className="big-number">{log.dueToday}</p>
-          <p className="muted small">révision(s) à faire aujourd&apos;hui{log.backlog > 0 ? `, ${log.backlog} étalée(s) sur les jours suivants` : ""}</p>
-          <Link href="/entrainement/carnet" className="small">Ouvrir le carnet</Link>
-        </div>
+      <section className="tiles" aria-label="Résumé du jour">
+        <Link href="/calendrier" className="tile">
+          <span className="muted small">Aujourd&apos;hui</span>
+          <strong style={{ fontSize: "1.5rem" }}>{today.doneToday} / {today.totalToday}</strong>
+          <span className="muted small">activités · {today.minutesToday} min</span>
+        </Link>
+        <Link href="/entrainement/carnet" className="tile">
+          <span className="muted small">Carnet d&apos;erreurs</span>
+          <strong style={{ fontSize: "1.5rem" }}>{log.dueToday}</strong>
+          <span className="muted small">à réviser{log.backlog > 0 ? ` · ${log.backlog} ensuite` : ""}</span>
+        </Link>
       </section>
     </div>
   );

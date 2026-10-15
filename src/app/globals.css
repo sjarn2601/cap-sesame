@@ -864,3 +864,202 @@ table.data th {
 
 /* Les cours séparent leurs paragraphes et leurs lignes de formules par des retours à la ligne. */
 .lesson-body { white-space: pre-line; }
+
+/* ---------- Allègement visuel (octobre 2026) ----------
+   Moins de cadres et de majuscules : les cartes sont des surfaces sans bordure,
+   les boutons secondaires des aplats discrets, les badges sans contour. */
+.card {
+  border: 0;
+  border-radius: 16px;
+  box-shadow: none;
+}
+.card .card {
+  background: var(--surface-2);
+  padding: 14px 16px;
+}
+.card.accent,
+.hero-action {
+  border: 0;
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+.eyebrow {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.btn {
+  border-color: transparent;
+  background: var(--surface-2);
+}
+.btn.primary {
+  border-color: var(--accent);
+}
+.btn.ghost {
+  background: transparent;
+  color: var(--accent);
+}
+.btn.danger {
+  background: transparent;
+  border-color: transparent;
+}
+.badge {
+  border-color: transparent;
+}
+.notice {
+  font-size: 0.95rem;
+  padding: 12px 16px;
+}
+h2 {
+  font-size: 1.15rem;
+}
+.big-number {
+  font-size: 2rem;
+}
+main {
+  padding-top: 20px;
+}
+.stack > * + * {
+  margin-top: 14px;
+}
+.topbar {
+  box-shadow: none;
+}
+@media (max-width: 760px) {
+  .card {
+    padding: 16px;
+  }
+  h1 {
+    font-size: 1.5rem;
+  }
+}
+/* Filtres en une seule ligne qui défile horizontalement. */
+.chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+  margin-left: -16px;
+  margin-right: -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+.chips::-webkit-scrollbar {
+  display: none;
+}
+.chips > * {
+  flex: 0 0 auto;
+}
+/* Tuiles de matières et listes compactes. */
+.tiles {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(46%, 220px), 1fr));
+}
+.tile {
+  display: block;
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 16px;
+  text-decoration: none;
+  color: var(--text);
+}
+.tile:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.tile strong {
+  display: block;
+  line-height: 1.3;
+}
+.tile .meter {
+  margin-top: 10px;
+}
+.meter {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.meter > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: inherit;
+}
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--surface);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.rows > li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+.rows > li + li {
+  border-top: 1px solid var(--surface-2);
+}
+.rows .grow {
+  flex: 1;
+  min-width: 0;
+}
+.rows a.title {
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+}
+.rows a.title:hover {
+  color: var(--accent);
+}
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--border);
+}
+.dot.ok {
+  background: var(--ok);
+}
+.dot.warn {
+  background: var(--warn);
+}
+.dot.ko {
+  background: var(--ko);
+}
+details > summary {
+  cursor: pointer;
+}
+/* Choix de mode compact (deux options côte à côte). */
+.segmented {
+  gap: 0;
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: 3px;
+}
+.segmented .radio-pill span {
+  min-height: 36px;
+  padding: 4px 14px;
+  border: 0;
+  background: transparent;
+  font-size: 0.9rem;
+}
+.segmented .radio-pill input:checked + span {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: 0 1px 2px rgb(20 26 43 / 12%);
+}
+fieldset {
+  border: 0;
+  padding: 0;
+}
+legend {
+  padding: 0;
+  margin-bottom: 8px;
+}

@@ -29,9 +29,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
   return (
     <div className="container stack" style={{ maxWidth: 960 }}>
       <h1>Concours blancs</h1>
-      <p className="notice">
-        <strong>Format de la session {config.code} (version {config.version}, vérifié le {frDate(config.verifiedAt, { day: "numeric", month: "long", year: "numeric" })})</strong>
-        Écrits annoncés le {frDate(config.body.examDate, { day: "numeric", month: "long", year: "numeric" })}, à distance. {config.body.breaks} Une simulation ne remplace pas la session préparatoire officielle obligatoire.
+      <p className="muted" style={{ marginTop: 0 }}>
+        Écrits le {frDate(config.body.examDate, { day: "numeric", month: "long", year: "numeric" })}, à distance. Choisis une épreuve, ou le concours complet.
       </p>
       {factor > 1 && <p className="notice warn">Aménagement de durée simulé : ×{factor} (réglable dans ton profil). L&apos;application ne déclare pas cet aménagement officiellement accordé.</p>}
 
@@ -41,29 +40,25 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
           const available = bank.get(code) ?? 0;
           const highlighted = epreuve === p.subject;
           return (
-            <article key={p.subject} className={`card stack ${highlighted ? "hero-action" : "flat"}`}>
+            <article key={p.subject} className={`card stack ${highlighted ? "hero-action" : ""}`}>
               <div>
-                <h2 style={{ marginBottom: 4 }}>{p.label}</h2>
-                <p className="muted small" style={{ margin: 0 }}>{p.questionCount} questions · {Math.ceil(p.minutes * factor)} min</p>
-                <p className="small" style={{ margin: "4px 0 0" }}>{p.scoringNote}</p>
+                <h2 style={{ marginBottom: 2 }}>{p.label}</h2>
+                <p className="muted small" style={{ margin: 0 }}>{p.questionCount} questions · {Math.ceil(p.minutes * factor)} min{p.subject === "DOC" ? " · conseillé sur ordinateur" : ""}</p>
               </div>
               {available === 0 ? (
-                <p className="notice warn small">Pas encore de sujet disponible pour cette épreuve.</p>
+                <p className="small muted">Pas encore de sujet disponible pour cette épreuve.</p>
               ) : (
-                <>
-                  {available < p.questionCount && <p className="small muted">Banque de démonstration : simulation réduite à {Math.min(available, p.questionCount)} question(s), durée ajustée.</p>}
-                  {p.subject === "DOC" && <p className="small muted">Dossier long : conseillé sur ordinateur (sur téléphone, documents et questions passent en onglets).</p>}
-                  <ActionForm action={startExamAction} className="stack">
-                    <input type="hidden" name="subject" value={p.subject} />
-                    {highlighted && tache && <input type="hidden" name="task" value={tache} />}
-                    <div className="radio-row">
-                      <label className="radio-pill"><input type="radio" name="mode" value="strict" defaultChecked /><span>Strict</span></label>
-                      <label className="radio-pill"><input type="radio" name="mode" value="pedagogic" /><span>Pédagogique</span></label>
-                    </div>
-                    <Submit className={highlighted ? "btn primary" : "btn"} pendingText="Préparation…">Lancer</Submit>
-                  </ActionForm>
-                </>
+                <ActionForm action={startExamAction} className="row between">
+                  <input type="hidden" name="subject" value={p.subject} />
+                  {highlighted && tache && <input type="hidden" name="task" value={tache} />}
+                  <div className="radio-row segmented" role="radiogroup" aria-label={`Mode pour ${p.label}`}>
+                    <label className="radio-pill"><input type="radio" name="mode" value="strict" defaultChecked /><span>Strict</span></label>
+                    <label className="radio-pill"><input type="radio" name="mode" value="pedagogic" /><span>Pédagogique</span></label>
+                  </div>
+                  <Submit className={highlighted ? "btn primary" : "btn"} pendingText="Préparation…">Lancer</Submit>
+                </ActionForm>
               )}
+              {available > 0 && available < p.questionCount && <p className="small muted" style={{ margin: 0 }}>Simulation réduite à {available} question(s), durée ajustée.</p>}
             </article>
           );
         })}
@@ -71,29 +66,21 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
 
       <section className="card stack">
         <h2>Concours complet</h2>
-        <p>Les sept épreuves à la suite ({Math.ceil(total * factor)} minutes de travail au format officiel), avec une pause encadrée de {config.body.pauseMaxMinutes} minutes maximum entre deux parties. Avec la banque actuelle, les épreuves sont réduites.</p>
+        <p className="muted" style={{ margin: 0 }}>Les sept épreuves à la suite, {Math.ceil(total * factor)} minutes de travail, avec une pause de {config.body.pauseMaxMinutes} minutes maximum entre deux parties.</p>
         <ActionForm action={startExamAction}>
           <input type="hidden" name="subject" value="FULL" />
           <input type="hidden" name="mode" value="strict" />
-          <Submit pendingText="Préparation…">Lancer le concours complet (strict)</Submit>
+          <Submit className="btn primary" pendingText="Préparation…">Lancer le concours complet (strict)</Submit>
         </ActionForm>
       </section>
 
-      <section className="card flat">
-        <h2>Modes</h2>
-        <ul>
-          <li><strong>Strict</strong> : temps calculé par le serveur, correction cachée jusqu&apos;à la fin, aucune aide, réponse tardive refusée.</li>
-          <li><strong>Pédagogique</strong> : explications après chaque réponse, temps indicatif ; le résultat est identifié comme tel et n&apos;est pas comparé aux simulations strictes.</li>
-        </ul>
-      </section>
-
       {past.length > 0 && (
-        <section className="card flat">
+        <section className="stack">
           <h2>Mes simulations</h2>
-          <ul className="list-plain">
+          <ul className="rows">
             {past.map((a) => (
-              <li key={a.id} className="row between">
-                <span>
+              <li key={a.id}>
+                <span className="grow">
                   <strong>{a.title}</strong> <span className="muted small">· {a.kind === "exam_strict" ? "strict" : "pédagogique"} · {frDateTime(a.startedAt)}</span>
                 </span>
                 {a.status === "in_progress" ? (
@@ -106,7 +93,17 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
           </ul>
         </section>
       )}
-      <p className="small muted">Sources : {config.body.sources.map((s) => <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer" style={{ marginRight: 8 }}>[{s.id}] {s.label}</a>)}</p>
+      <details className="small muted">
+        <summary>Modes, format officiel et sources</summary>
+        <ul>
+          <li><strong>Strict</strong> : temps calculé par le serveur, correction cachée jusqu&apos;à la fin, aucune aide, réponse tardive refusée.</li>
+          <li><strong>Pédagogique</strong> : explications après chaque réponse, temps indicatif ; le résultat n&apos;est pas comparé aux simulations strictes.</li>
+        </ul>
+        <p>
+          Format de la session {config.code} (version {config.version}, vérifié le {frDate(config.verifiedAt, { day: "numeric", month: "long", year: "numeric" })}). {config.body.breaks} Une simulation ne remplace pas la session préparatoire officielle obligatoire.
+        </p>
+        <p>Sources : {config.body.sources.map((s) => <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer" style={{ marginRight: 8 }}>[{s.id}] {s.label}</a>)}</p>
+      </details>
     </div>
   );
 }
