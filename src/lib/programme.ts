@@ -73,6 +73,15 @@ export function buildProgramme(reports: NewsReport[], flashes: LanguageExerciseD
   return { date, dateLabel, segments, quiz, words: segments.reduce((a, s) => a + words(s.text), 0) };
 }
 
+/** Un sujet seul, pour la réécoute depuis les semaines précédentes. */
+export function storyProgramme(r: NewsReport, weekLabel: string): Programme {
+  const segments: Segment[] = [
+    { kind: "report", label: weekLabel, title: r.headline, category: r.category, text: r.report, vocabulary: r.vocabulary },
+    { kind: "vocab", label: "Words of the day", title: "Words to remember", text: `Words to remember. ${r.vocabulary.map((v) => `${v.term}.`).join(" ")}`, vocabulary: r.vocabulary },
+  ];
+  return { date: r.exerciseId, dateLabel: weekLabel, segments, quiz: [], words: segments.reduce((a, s) => a + words(s.text), 0) };
+}
+
 /** Découpe un texte en phrases pour la synthèse vocale (les navigateurs coupent les énoncés trop longs). */
 export function sentences(text: string) {
   return text.match(/[^.!?]+[.!?]+["»”’]?|[^.!?]+$/g)?.map((s) => s.trim()).filter(Boolean) ?? [text];
