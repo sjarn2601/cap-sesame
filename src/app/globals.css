@@ -1408,3 +1408,4 @@ textarea {
 .news-sub { margin: auto 0 0; background: rgba(0, 0, 0, 0.45); border-radius: 10px; padding: 10px 14px; font-size: clamp(1rem, 0.9rem + 0.5vw, 1.25rem); line-height: 1.4; }
 .news-bar { height: 4px; border-radius: 99px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
 .news-bar > span { display: block; height: 100%; background: var(--gold); transition: width 0.4s; }
+.news-screen { max-height: min(62vh, 560px); }

@@ -24,7 +24,7 @@ export default async function Page() {
             <li key={l.url}>
               <span className="grow">
                 <a className="title" href={l.url} target="_blank" rel="noopener noreferrer">{l.label}</a>
-                <span className="small muted">{l.detail}</span>
+                <span className="small muted" style={{ display: "block" }}>{l.detail}</span>
               </span>
             </li>
           ))}
