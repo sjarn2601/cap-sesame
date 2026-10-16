@@ -81,7 +81,7 @@ async function publishedCandidates(db: DB, filter: { subjectCode?: string; skill
 
 const toCandidate = (q: Qv): Candidate => ({ id: q.id, questionId: q.questionId, familyId: q.familyId, skillIds: q.skillIds, difficulty: q.difficulty });
 
-async function openSubjectCodes(db: DB, secondLanguage: string) {
+export async function openSubjectCodes(db: DB, secondLanguage: string) {
   const rows = await db.select().from(subjects).where(eq(subjects.open, true));
   return rows.filter((s) => !s.isLanguage || s.code === "EN" || s.code === languageSubject(secondLanguage)).map((s) => s.code);
 }

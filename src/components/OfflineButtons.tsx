@@ -13,35 +13,13 @@ function useWorker() {
   return state;
 }
 
-/** Télécharger un cours pour le lire sans réseau (choix explicite de l'élève). */
-export function DownloadLesson({ url, title }: { url: string; title: string }) {
-  const worker = useWorker();
-  const [saved, setSaved] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  useEffect(() => setSaved(getLessons().some((l) => l.url === url)), [url]);
-  if (worker !== "ready") return null;
-  if (saved) return <p className="small muted" style={{ margin: 0 }}>✓ Disponible hors connexion · <Link href="/hors-ligne">Mes contenus</Link></p>;
+/** Les cours sont tous copiés sur l'appareil (mode hors ligne) : simple lien vers leur version hors ligne. */
+export function DownloadLesson({ url }: { url: string; title: string }) {
+  const lessonId = url.split("/").pop() ?? "";
   return (
-    <div className="row" style={{ gap: 8 }}>
-      <button
-        className="btn small"
-        disabled={busy}
-        onClick={async () => {
-          const list = getLessons();
-          if (list.length >= MAX_OFFLINE_LESSONS) return setMsg(`Limite de ${MAX_OFFLINE_LESSONS} cours atteinte : retires-en un dans « Mes contenus ».`);
-          setBusy(true);
-          const r = await swCommand({ type: "download", urls: [url] });
-          setBusy(false);
-          if (!r.ok) return setMsg("Téléchargement impossible pour l'instant.");
-          setLessons([...list, { url, title, savedAt: new Date().toISOString() }]);
-          setSaved(true);
-        }}
-      >
-        {busy ? "Téléchargement…" : "Disponible hors connexion"}
-      </button>
-      {msg && <span className="small" role="status">{msg}</span>}
-    </div>
+    <p className="small muted" style={{ margin: 0 }}>
+      ✓ Disponible hors ligne · <a href={`/hors-ligne#${encodeURIComponent(`cours:${lessonId}`)}`}>Lire sans réseau</a>
+    </p>
   );
 }
 

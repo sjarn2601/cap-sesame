@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireStudent } from "@/server/next";
 import { StudentNav } from "@/components/StudentNav";
 import { LogoutButton } from "@/components/LogoutButton";
+import { OfflineSync } from "@/components/OfflineSync";
 
 export default async function StudentLayout({ children }: { children: React.ReactNode }) {
   await requireStudent();
@@ -18,6 +19,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
         </div>
       </header>
       <main id="contenu">{children}</main>
+      <OfflineSync />
       <StudentNav variant="bottom" />
       <footer className="footer">
         <div className="container wide row between">

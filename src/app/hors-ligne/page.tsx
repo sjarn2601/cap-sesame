@@ -1,35 +1,30 @@
-import Link from "next/link";
+import { LibraryApp } from "./LibraryApp";
 import { OfflineApp } from "./OfflineApp";
 
-export const metadata = { title: "Hors connexion" };
+export const metadata = { title: "Hors ligne" };
 
-// Page statique : mise en cache par le service worker, elle s'ouvre sans réseau.
+// Page statique : mise en cache par le service worker, elle s'ouvre sans réseau et lit la bibliothèque copiée sur l'appareil.
 export default function Page() {
   return (
     <>
       <header className="topbar">
         <div className="container wide inner">
-          <Link href="/aujourdhui" className="brand">
+          <a href="/hors-ligne" className="brand">
             <span className="brand-mark" aria-hidden="true">CS</span>
             <span>CAP SESAME</span>
-          </Link>
+          </a>
+          <a href="/aujourdhui" className="btn small">Version en ligne</a>
         </div>
       </header>
-      <main id="contenu">
+      <main id="contenu" data-offline-app="">
         <div className="container stack">
-          <div>
-            <p className="eyebrow">Mode hors connexion</p>
-            <h1>Mes contenus téléchargés</h1>
-          </div>
-          <section className="card flat stack" aria-labelledby="dispo">
-            <h2 id="dispo" style={{ margin: 0 }}>Ce qui marche sans réseau</h2>
-            <ul className="small" style={{ margin: 0 }}>
-              <li><strong>Disponible :</strong> les cours et les séries libres que tu as téléchargés.</li>
-              <li><strong>Avec réseau seulement :</strong> diagnostic, concours blancs (le temps est tenu par le serveur), révisions du carnet, plan du jour, progrès.</li>
-              <li>Tes réponses restent sur cet appareil jusqu&apos;au retour du réseau, puis sont envoyées une seule fois. Elles sont effacées à la déconnexion.</li>
-            </ul>
-          </section>
-          <OfflineApp />
+          <LibraryApp />
+          <details className="small">
+            <summary>Anciennes séries et cours téléchargés un par un</summary>
+            <div className="stack" style={{ marginTop: 12 }}>
+              <OfflineApp />
+            </div>
+          </details>
         </div>
       </main>
     </>

@@ -205,3 +205,60 @@ test("langues, actualité et cartes : écoute avec transcription, frise, carte p
   await page.getByRole("button", { name: "Je savais" }).click();
   await expect(page.getByText("Révision terminée.")).toBeVisible();
 });
+
+/** Lit une valeur de la bibliothèque hors ligne sans créer la base si elle n'existe pas encore. */
+function readOffline(page: Page, key: "library" | "answers") {
+  return page.evaluate(
+    (k) =>
+      new Promise<unknown>((res) => {
+        indexedDB.databases().then((dbs) => {
+          if (!dbs.some((d) => d.name === "sesame-offline")) return res(null);
+          const r = indexedDB.open("sesame-offline");
+          r.onsuccess = () => {
+            try {
+              const g = r.result.transaction("kv").objectStore("kv").get(k);
+              g.onsuccess = () => res(g.result ?? null);
+              g.onerror = () => res(null);
+            } catch {
+              res(null);
+            }
+          };
+          r.onerror = () => res(null);
+        });
+      }),
+    key,
+  );
+}
+
+test("mode 100 % hors ligne : cours, série corrigée et envoi au retour du réseau @mobile", async ({ page, context }) => {
+  await register(page);
+  await page.goto("/aujourdhui");
+  // La bibliothèque se copie en arrière-plan dans IndexedDB.
+  await expect
+    .poll(
+      async () => ((await readOffline(page, "library")) as { questions: unknown[] } | null)?.questions.length ?? 0,
+      { timeout: 30_000 },
+    )
+    .toBeGreaterThan(50);
+  await page.goto("/hors-ligne");
+  await context.setOffline(true);
+  await page.reload().catch(() => {});
+  await expect(page.getByText("Tout ton programme, sans réseau")).toBeVisible();
+  await page.locator("a.tile").first().click();
+  await page.locator("ul.rows a.title").first().click();
+  await expect(page.locator("h1")).toBeVisible();
+  await page.getByRole("button", { name: /S'entraîner sur cette notion/ }).click();
+  const num = page.locator("input[inputmode=decimal]");
+  if (await num.isVisible().catch(() => false)) await num.fill("1");
+  else await page.locator(".options button").first().click();
+  await page.getByRole("button", { name: "Valider" }).click();
+  await expect(page.locator(".correction")).toBeVisible();
+  await context.setOffline(false);
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await expect
+    .poll(
+      async () => (((await readOffline(page, "answers")) as { synced?: boolean }[] | null) ?? []).filter((a) => !a.synced).length,
+      { timeout: 15_000 },
+    )
+    .toBe(0);
+});

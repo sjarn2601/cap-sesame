@@ -326,6 +326,41 @@ describe("OFF-01 : séries hors connexion", () => {
   });
 });
 
+describe("Mode 100 % hors ligne : bibliothèque complète", () => {
+  it("copie les cours et questions non réservées, puis synchronise les lots sans doublon", async () => {
+    const { buildOfflineLibrary, syncLibraryAnswers } = await import("@/server/offlineLibrary");
+    const a = await newStudent("offlib@test.fr");
+    const lib = await buildOfflineLibrary(db, a);
+    expect(lib.lessons.length).toBeGreaterThan(10);
+    expect(lib.questions.length).toBeGreaterThan(50);
+    const reserved = await db.select({ id: s.questionVersions.id }).from(s.questionVersions).where(eq(s.questionVersions.reserved, true));
+    const ids = new Set(lib.questions.map((q) => q.id));
+    expect(reserved.some((r) => ids.has(r.id))).toBe(false);
+    expect(lib.subjects.some((x) => x.code === "LV-DE")).toBe(false);
+    const again = await buildOfflineLibrary(db, a);
+    expect(again.version).toBe(lib.version);
+
+    const qs = lib.questions.filter((q) => !q.documentSetId).slice(0, 4);
+    const answers = qs.map((q, i) => ({
+      questionVersionId: q.id,
+      clientId: `lib-${i}-${q.id}`,
+      selected: q.format === "numeric" ? [] : [q.options[0].id],
+      numericValue: q.format === "numeric" ? 1 : null,
+      durationMs: 10000,
+      answeredAt: new Date(Date.now() + i).toISOString(),
+    }));
+    const first = await syncLibraryAnswers(db, a, "batch-0001", answers);
+    expect(first.accepted).toBe(4);
+    expect(first.finalized).toBe(true);
+    // Lot renvoyé après une coupure : même série, aucune réponse en double.
+    await syncLibraryAnswers(db, a, "batch-0001", answers);
+    const tries = await db.select().from(s.attempts).where(and(eq(s.attempts.userId, a.id), sql`${s.attempts.meta}->>'batchId' = 'batch-0001'`));
+    expect(tries).toHaveLength(1);
+    const rows = await db.select().from(s.responses).where(eq(s.responses.attemptId, tries[0].id));
+    expect(rows).toHaveLength(4);
+  });
+});
+
 describe("IA-01 / IA-02 : assistant encadré", () => {
   it("appuis cités, données minimales, niveaux d'aide, quotas, budget et repli éditorial", async () => {
     const { askAboutQuestion, askAboutLesson, redact } = await import("@/server/assistant");

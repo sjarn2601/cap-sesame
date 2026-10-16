@@ -1,9 +1,9 @@
 // Service worker CAP SESAME (OFF-01).
 // - Fichiers statiques de l'application : cache d'abord.
-// - Pages : réseau d'abord. Aucune page personnelle n'est mise en cache automatiquement :
-//   seuls les cours téléchargés explicitement par l'élève (cache « sesame-offline ») et la page /hors-ligne.
+// - Pages : réseau d'abord. Aucune page personnelle n'est mise en cache automatiquement. Sans réseau, toute
+//   page ouvre /hors-ligne : le mode hors ligne complet (bibliothèque copiée dans IndexedDB, voir offlineLibraryStore).
 // - API : toujours le réseau (les réponses hors connexion passent par la file locale de /hors-ligne).
-const VERSION = "v1";
+const VERSION = "v2";
 const STATIC = `sesame-static-${VERSION}`;
 const SHELL = `sesame-shell-${VERSION}`;
 const OFFLINE = "sesame-offline";
@@ -100,6 +100,9 @@ self.addEventListener("message", (event) => {
       try {
         if (msg.type === "download") {
           for (const u of msg.urls) await storePage(u, OFFLINE);
+          reply({ ok: true });
+        } else if (msg.type === "refresh-shell") {
+          await storePage("/hors-ligne", SHELL);
           reply({ ok: true });
         } else if (msg.type === "remove") {
           await (await caches.open(OFFLINE)).delete(new URL(msg.url, self.location.origin).pathname);

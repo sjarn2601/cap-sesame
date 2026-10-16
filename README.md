@@ -95,7 +95,7 @@ Principes :
 | ADM-01, QUAL-01 tableau de bord | Fait : contenus en attente, couverture, signalements, actualités à revérifier |
 | OPS-01 exploitation | Partiel : `/api/health` seulement. Supervision, alertes et sauvegardes dépendent de l'hébergement. |
 | TEC-01 | Web responsive, utilisable à 360 px |
-| OFF-01 hors connexion (lot B) | Fait : appli installable, cours et séries libres téléchargés explicitement, réponses synchronisées sans doublon, données effacées à la déconnexion |
+| OFF-01 hors connexion (lot B) | Fait, étendu au 100 % hors ligne : bibliothèque complète copiée sur l'appareil, séries, dossiers et concours blancs sans réseau, réponses synchronisées sans doublon, données effacées à la déconnexion |
 | IA-01, IA-02 assistant encadré (lot B) | Fait : indice, démarche, solution expliquée ; explication de correction ; reformulation de cours ; appuis versionnés affichés ; quotas, budget, délai et repli éditorial ; rien en concours strict |
 | ADA-02 estimation probabiliste (lot B) | Fait : modèle bêta-binomial pondéré par la difficulté, calculé à côté du système simple, intervalle affiché à l'élève comme expérimental ; comparaison et analyse de difficulté sur `/admin/estimation` ; bascule réversible et journalisée (système simple par défaut) |
 | REV-02 révision (lot B) | Fait : cartes personnelles à révision espacée (`/entrainement/cartes`), carnet regroupé par type d'erreur, export des fiches (texte ou CSV), écoute des cartes de langue par la synthèse vocale du navigateur |
@@ -114,13 +114,15 @@ L'application s'installe depuis le navigateur du téléphone (application web pr
 
 Une fois installée : icône, plein écran, prise en compte des encoches, barre de navigation en bas, mode concentration pendant les séances (la barre disparaît).
 
-### Hors connexion
+### Hors ligne (100 %)
 
-- L'élève télécharge explicitement un cours (« Disponible hors connexion ») ou une série libre (page S'entraîner). Limites : 10 cours, 3 séries non synchronisées.
-- `/hors-ligne` liste ce qui est disponible sans réseau et ce qui ne l'est pas. Le diagnostic, les concours blancs (temps tenu par le serveur) et les révisions demandent une connexion.
-- Chaque réponse locale reçoit un identifiant unique. Au retour du réseau, le serveur déduplique, note à nouveau (sa note fait foi) et signale les questions retirées depuis le téléchargement ; elles ne comptent plus dans la maîtrise.
-- Règle de conflit : en série libre, la première réponse reçue pour une question fait foi, comme en ligne.
-- Aucune page personnelle n'est mise en cache automatiquement. À la déconnexion, les séries et cours téléchargés sont effacés de l'appareil.
+- Dès que l'élève ouvre l'appli connecté avec du réseau, toute sa bibliothèque est copiée sur l'appareil (IndexedDB, `src/lib/offlineLibraryStore.ts`) : cours, cartes mémoire, questions d'entraînement avec corrigés et indices, dossiers d'analyse documentaire, format des épreuves. Elle est revérifiée toutes les 6 heures et remplacée seulement si une nouvelle version est publiée (`GET /api/offline/library`).
+- Sans réseau, toute page ouvre `/hors-ligne` : cours, séries corrigées par matière ou par notion, dossiers guidés, concours blancs chronométrés sur l'appareil, cartes mémoire et progrès locaux.
+- Les questions réservées (diagnostic, concours blancs en ligne) ne quittent jamais le serveur : les concours blancs hors ligne utilisent les questions d'entraînement.
+- Chaque réponse locale reçoit un identifiant unique et part par lots de 50 au retour du réseau (`POST /api/offline/library-sync`). Un lot renvoyé après une coupure retrouve la même série : aucune réponse en double. Les réponses comptent ensuite dans la maîtrise et les progrès en ligne.
+- Restent en ligne : l'assistant IA, le diagnostic, les concours blancs officiels (temps tenu par le serveur), le carnet d'erreurs et le plan du jour.
+- À la déconnexion, la bibliothèque et les réponses locales sont effacées de l'appareil.
+- Les anciennes séries téléchargées une par une (`/api/offline/pack`) restent lisibles dans `/hors-ligne`.
 - Le service worker (`public/sw.js`) n'est actif qu'en production (`npm run build && npm start`), ou en développement avec `NEXT_PUBLIC_SW=1`.
 
 ## Assistant IA

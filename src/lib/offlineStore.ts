@@ -1,5 +1,6 @@
 // Stockage local hors connexion (navigateur uniquement). Volume limité, effacé à la déconnexion.
 import type { OfflineAnswer, OfflinePack, SyncReport } from "@/server/offline";
+import { clearLibrary } from "./offlineLibraryStore";
 
 export const MAX_OFFLINE_LESSONS = 10;
 const PACKS = "sesame.offline.packs";
@@ -69,6 +70,7 @@ export async function clearOfflineData() {
   try {
     await caches.delete("sesame-offline");
   } catch {}
+  await clearLibrary();
 }
 
 export const newClientId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);

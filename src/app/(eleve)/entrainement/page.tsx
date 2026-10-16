@@ -5,7 +5,6 @@ import { getReviewLog } from "@/server/reviewLog";
 import { requireStudent } from "@/server/next";
 import { ActionForm, Submit } from "@/components/ActionForm";
 import { startPracticeAction, startReviewAction, startExamAction } from "@/app/actions/student";
-import { DownloadSeries } from "@/components/OfflineButtons";
 
 export const metadata = { title: "S'entraîner" };
 export const dynamic = "force-dynamic";
@@ -82,7 +81,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ n
           <div><Submit className="btn" pendingText="Préparation…">Ouvrir un dossier</Submit></div>
         </ActionForm>
       )}
-      <DownloadSeries subjects={practicable.map((s) => ({ code: s.code, name: s.name }))} />
+      <section className="card stack">
+        <h2 style={{ margin: 0 }}>Sans réseau</h2>
+        <p className="small muted" style={{ margin: 0 }}>Tous les cours et toutes les questions d&apos;entraînement sont copiés sur ton appareil. Dans le train ou sans connexion, l&apos;appli ouvre le mode hors ligne ; tes réponses arrivent sur ton compte au retour du réseau.</p>
+        <div><a className="btn" href="/hors-ligne">Ouvrir le mode hors ligne</a></div>
+      </section>
     </div>
   );
 }
