@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import { canSpeak, compareReading, speak, SPEECH_LANG } from "@/lib/speech";
 
-type Exercise = {
+export type Exercise = {
   id: string;
   exerciseId: string;
   subjectCode: string;
@@ -57,7 +57,7 @@ function useTts() {
   return tts;
 }
 
-function Listening({ x, lang, dir }: { x: Exercise; lang: string; dir: string }) {
+export function Listening({ x, lang, dir }: { x: Exercise; lang: string; dir: string }) {
   const [showText, setShowText] = useState(x.transcriptByDefault);
   const [answer, setAnswer] = useState<string | null>(null);
   const tts = useTts();

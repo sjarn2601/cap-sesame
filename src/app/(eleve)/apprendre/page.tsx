@@ -61,7 +61,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ q
             })}
           </nav>
           <p className="small muted">
-            Aussi : <Link href="/apprendre/langues">langues à l&apos;oral</Link> · <Link href="/apprendre/actualites">veille d&apos;actualité</Link>
+            Aussi : <Link href="/apprendre/journal">journal en anglais du jour</Link> · <Link href="/apprendre/langues">langues à l&apos;oral</Link> · <Link href="/apprendre/actualites">veille d&apos;actualité</Link>
           </p>
         </>
       ) : (

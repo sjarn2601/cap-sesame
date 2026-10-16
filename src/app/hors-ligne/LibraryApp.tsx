@@ -7,6 +7,7 @@ import { addAnswers, addExam, getAnswers, getExams, getLibrary, refreshLibrary, 
 import { swCommand } from "@/lib/offlineStore";
 import { DocumentPane } from "@/components/DocumentPane";
 import { Flashcards } from "@/app/(eleve)/apprendre/cours/[lessonId]/Flashcards";
+import { DailyJournal } from "@/components/DailyJournal";
 import type { LibraryLesson, LibraryQuestion, OfflineLibrary } from "@/server/offlineLibrary";
 
 const KEYS = ["A", "B", "C", "D", "E", "F", "G", "H"];
@@ -568,6 +569,16 @@ export function LibraryApp() {
     );
   }
 
+  if (kind === "journal") {
+    return (
+      <div className="stack">
+        {back()}
+        <h1>Journal en anglais du jour</h1>
+        <DailyJournal />
+      </div>
+    );
+  }
+
   if (kind === "progres") {
     return (
       <div className="stack">
@@ -604,6 +615,7 @@ export function LibraryApp() {
         </p>
         <div className="row">
           <button className="btn primary" onClick={() => startPractice("Série mélangée", lib.questions.filter((q) => !q.documentSetId))}>Série mélangée de 10 questions</button>
+          <button className="btn" onClick={() => go("journal")}>Journal en anglais · 15 min</button>
           <button className="btn" onClick={() => go("concours")}>Concours blancs</button>
           <button className="btn" onClick={() => go("progres")}>Mes progrès</button>
           {online && <button className="btn" disabled={busy} onClick={download}>{busy ? "Mise à jour…" : "Mettre à jour"}</button>}

@@ -1379,3 +1379,32 @@ textarea {
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .monogram { color: color-mix(in srgb, var(--tone) 45%, white); }
 }
+
+/* Journal en anglais du jour : écran façon journal télévisé. */
+.news-screen {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: clamp(16px, 3vw, 32px);
+  border-radius: var(--radius);
+  background: radial-gradient(circle at 85% 10%, rgba(213, 166, 73, 0.18), transparent 40%), #142520;
+  color: #fff;
+  overflow: hidden;
+}
+@media (max-width: 760px) {
+  .news-screen { aspect-ratio: auto; min-height: 340px; }
+}
+.news-top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+.news-live { background: var(--gold); color: #17201c; padding: 4px 10px; border-radius: 6px; }
+.news-cat { color: #b9d3c6; }
+.news-time { margin-left: auto; color: #b9d3c6; font-family: var(--mono); letter-spacing: 0; }
+.news-title { font-family: var(--serif); font-size: clamp(1.4rem, 1rem + 2vw, 2.4rem); line-height: 1.1; margin: 0; color: #fff; }
+.news-vocab { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.85rem; color: #d4e2db; }
+.news-vocab li { background: rgba(255, 255, 255, 0.08); border-radius: 999px; padding: 4px 10px; }
+.news-vocab strong { color: #f0d9a0; }
+.news-sub { margin: auto 0 0; background: rgba(0, 0, 0, 0.45); border-radius: 10px; padding: 10px 14px; font-size: clamp(1rem, 0.9rem + 0.5vw, 1.25rem); line-height: 1.4; }
+.news-bar { height: 4px; border-radius: 99px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+.news-bar > span { display: block; height: 100%; background: var(--gold); transition: width 0.4s; }

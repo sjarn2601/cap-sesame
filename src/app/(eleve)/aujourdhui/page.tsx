@@ -10,6 +10,7 @@ import { TASK_LABELS, frDate } from "@/components/labels";
 import type { PlanTask } from "@/db/schema";
 import { InstallApp } from "@/components/InstallApp";
 
+
 export const metadata = { title: "Aujourd'hui" };
 export const dynamic = "force-dynamic";
 
@@ -142,6 +143,12 @@ export default async function Page() {
       )}
 
       <InstallApp compact />
+
+      <Link href="/apprendre/journal" className="tile journal-tile">
+        <span className="eyebrow" style={{ margin: 0 }}>Anglais · écoute du jour · 15 min</span>
+        <strong>Journal en anglais du jour</strong>
+        <span className="muted small">Reportages, brèves, vocabulaire et quiz. Nouveau chaque jour, aussi hors ligne.</span>
+      </Link>
 
       <section className="tiles" aria-label="Résumé du jour">
         <Link href="/calendrier" className="tile">
