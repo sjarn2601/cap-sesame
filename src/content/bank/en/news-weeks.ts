@@ -3,6 +3,7 @@
 // Les semaines passées restent disponibles dans la rubrique « Semaines précédentes ».
 import type { LanguageExerciseDef } from "../helpers";
 import { EN_NEWS_LISTENING, EN_NEWS_REPORTS, type NewsReport } from "./news-listening";
+import { EN_NEWS_2026W43_FLASHES, EN_NEWS_2026W43_REPORTS } from "./news-2026-W43";
 
 export type NewsWeek = {
   /** Semaine ISO, par exemple « 2026-W42 ». */
@@ -14,6 +15,7 @@ export type NewsWeek = {
 };
 
 export const NEWS_WEEKS: NewsWeek[] = [
+  { week: "2026-W43", label: "Semaine du 19 octobre 2026", reports: EN_NEWS_2026W43_REPORTS, flashes: EN_NEWS_2026W43_FLASHES },
   { week: "2026-W42", label: "Semaine du 12 octobre 2026", reports: EN_NEWS_REPORTS, flashes: EN_NEWS_LISTENING },
 ];
 
